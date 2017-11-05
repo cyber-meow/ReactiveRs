@@ -51,7 +51,7 @@ impl<C, F, V1, V2> Continuation<V1> for Map<C, F>
     }
 }
 
-/// A continuation
+/// A continuation that call continuation in the next instant.
 pub struct Pause<C> { continuation: C }
 
 impl<C, V> Continuation<V> for Pause<C> where C: Continuation<V>, V: 'static {
