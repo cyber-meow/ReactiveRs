@@ -22,6 +22,11 @@ pub trait Process: 'static {
         Map { process: self, map }
     }
 
+    /// Flatten the execution of a process when its returned value is itself another process.
+    fn flatten(self) -> Flatten<Self> where Self: Sized, Self::Value: Process {
+        Flatten(self)
+    }
+
     // TODO: add combinators
 }
 
@@ -62,5 +67,16 @@ impl<P> Process for Pause<P> where P: Process {
 
     fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<P::Value> {
         self.0.call(runtime, next.pause());
+    }
+}
+
+/// Flatten the process when it returns another process to get only the final process.
+pub struct Flatten<P>(P);
+
+impl<P> Process for Flatten<P> where P: Process, P::Value: Process {
+    type Value = <<P as Process>::Value as Process>::Value;
+
+    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
+       self.0.call(runtime, {|r: &mut Runtime, p: P::Value| p.call(r, next);});
     }
 }
