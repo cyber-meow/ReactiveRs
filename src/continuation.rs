@@ -21,7 +21,7 @@ pub trait Continuation<V>: 'static {
 
     /// Create a new continuation that calls `Self` in the next instant.
     fn pause(self) -> Pause<Self> where Self: Sized {
-        Pause { continuation: self }
+        Pause(self)
     }
 }
 
@@ -51,12 +51,12 @@ impl<C, F, V1, V2> Continuation<V1> for Map<C, F>
     }
 }
 
-/// A continuation that call continuation in the next instant.
-pub struct Pause<C> { continuation: C }
+/// A continuation that calls another continuation in the next instant.
+pub struct Pause<C>(C);
 
 impl<C, V> Continuation<V> for Pause<C> where C: Continuation<V>, V: 'static {
     fn call(self, runtime: &mut Runtime, value: V) {
-        runtime.on_next_instant(Box::new(self.continuation.map({|_| value})));
+        runtime.on_next_instant(Box::new(self.0.map({|_| value})));
     }
     
     fn call_box(self: Box<Self>, runtime: &mut Runtime, value: V) {
