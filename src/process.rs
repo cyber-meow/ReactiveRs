@@ -1,3 +1,5 @@
+use std::rc::Rc;
+use std::cell::RefCell;
 use runtime::Runtime;
 use continuation::Continuation;
 
@@ -27,7 +29,26 @@ pub trait Process: 'static {
         Flatten(self)
     }
 
+    /// Chain another process after the exectution of one process (like the `bind` for a monad).
+    fn and_then<F, P>(self, chain: F) ->
+        //Flatten<Map<Self, F>> where Self: Sized, F: FnOnce(Self::Value) -> P + 'static, P: Process
+        AndThen<Self, F> where Self: Sized, F: FnOnce(Self::Value) -> P + 'static, P: Process
+    {
+        AndThen { process: self, chain }
+        //self.map(chain).flatten()
+    }
+
     // TODO: add combinators
+}
+
+pub fn execute_process<P>(p: P) -> Rc<RefCell<Option<P::Value>>> where P: Process {
+    let mut runtime = Runtime::new();
+    let res: Rc<RefCell<Option<P::Value>>> = Rc::new(RefCell::new(None));
+    let res2 = res.clone();
+    let c = move |_: &mut Runtime, v| *res2.borrow_mut() = Some(v);
+    p.call(&mut runtime, c);
+    runtime.execute();
+    res
 }
 
 /// A process that return a value of type V.
@@ -54,7 +75,7 @@ impl<P, F, V> Process for Map<P, F>
 {
     type Value = V;
 
-    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<V> {
+    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
         self.process.call(runtime, next.map(self.map));
     }
 }
@@ -65,7 +86,7 @@ pub struct Pause<P>(P);
 impl<P> Process for Pause<P> where P: Process {
     type Value = P::Value;
 
-    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<P::Value> {
+    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
         self.0.call(runtime, next.pause());
     }
 }
@@ -77,6 +98,22 @@ impl<P> Process for Flatten<P> where P: Process, P::Value: Process {
     type Value = <<P as Process>::Value as Process>::Value;
 
     fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
-       self.0.call(runtime, {|r: &mut Runtime, p: P::Value| p.call(r, next);});
+        let c = |r: &mut Runtime, p: P::Value| p.call(r, next);
+        self.0.call(runtime, c);
+    }
+}
+
+/// Chain a computation onto the end of another process.
+pub struct AndThen<P, F> { process: P, chain: F }
+
+impl<P1, P2, F> Process for AndThen<P1, F>
+    where P1: Process, P2: Process, F: FnOnce(P1::Value) -> P2 + 'static
+{
+    type Value = P2::Value;
+
+    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
+        let chain = self.chain;
+        let c = |r: &mut Runtime, v: P1::Value| chain(v).call(r, next);
+        self.process.call(runtime, c);
     }
 }
