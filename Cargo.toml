@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["cyber-meow <sjungle305@gmail.com>"]
 
 [dependencies]
+either = "1.3"

@@ -1,4 +1,4 @@
-use runtime::Runtime;
+use Runtime;
 
 /// A reactive continuation awaiting a value of type `V`. For the sake of simplicity,
 /// continuation must be valid on the static lifetime.

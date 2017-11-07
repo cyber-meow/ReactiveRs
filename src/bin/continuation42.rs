@@ -1,7 +1,6 @@
 extern crate reactive;
 
-use reactive::runtime::Runtime;
-use reactive::continuation::Continuation;
+use reactive::{ Runtime, Continuation };
 
 fn main() {
     let c = |_: &mut Runtime, _| println!("{}", 42);

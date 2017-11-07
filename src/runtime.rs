@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use continuation::Continuation;
+use Continuation;
 
 /// Runtime for executing reactive continuations.
 pub struct Runtime {
