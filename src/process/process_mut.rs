@@ -8,28 +8,39 @@ pub trait ProcessMut: Process {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>;
 
-    //fn whil<V>(self) -> While<Self> where Self: ProcessMut<Value=LoopStatus<V>> + Sized {
-    //  While(self)
-    //}
+    fn while_loop<V>(self) -> While<Self> where Self: ProcessMut<Value=LoopStatus<V>> + Sized {
+        While(self)
+    }
 }
 
-/*pub enum LoopStatus<V> { Continue, Exit(V) }
+pub enum LoopStatus<V> { Continue, Exit(V) }
 
 pub struct While<P>(P);
 
-impl<P, V> Process for While<P> where P: Process<Value=LoopStatus<V>> {
+impl<P, V> Process for While<P> where P: ProcessMut<Value=LoopStatus<V>> {
     type Value = V;
 
     fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
-        let c = |r: &mut Runtime, (process, loop_status)| {
-            match loop_status {
-                LoopStatus::Continue => process.call(r, c),
-                LoopStatus::Exit(v) => next.call(r, v),
-            }
-        };
-        self.0.call(runtime, c);
+        self.0.call_mut(runtime, WhileContinuation(next));
     }
-}*/
+}
+
+pub struct WhileContinuation<C>(C);
+
+impl<P, C, V> Continuation<(P, P::Value)> for WhileContinuation<C>
+    where P: ProcessMut<Value=LoopStatus<V>>, C: Continuation<V>
+{
+    fn call(self, runtime: &mut Runtime, (process, loop_status): (P, LoopStatus<V>)) {
+        match loop_status {
+            LoopStatus::Continue => process.call_mut(runtime, self),
+            LoopStatus::Exit(v) => self.0.call(runtime, v),
+        }
+    }
+
+    fn call_box(self: Box<Self>, runtime: &mut Runtime, value: (P, LoopStatus<V>)) {
+        (*self).call(runtime, value);
+    }
+}
 
 impl<V> ProcessMut for Value<V> where V: Copy + 'static {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)

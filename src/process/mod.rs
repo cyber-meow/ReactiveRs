@@ -2,7 +2,7 @@ use std::rc::Rc;
 use std::cell::{ RefCell };
 use either::{ Either, Left, Right };
 
-mod process_mut;
+pub mod process_mut;
 
 use { Runtime, Continuation };
 
