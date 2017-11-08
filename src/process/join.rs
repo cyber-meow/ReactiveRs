@@ -23,6 +23,25 @@ impl<P1, P2> Process for Join<P1, P2> where P1: Process, P2: Process {
     }
 }
 
+impl<P1, P2> ProcessMut for Join<P1, P2> where P1: ProcessMut, P2: ProcessMut {
+    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
+        where Self: Sized, C: Continuation<(Self, Self::Value)>
+    {
+        let mut_next = next.map(
+            |((p1, v1), (p2, v2)): ((P1, P1::Value), (P2, P2::Value))|
+            (p1.join(p2), (v1, v2))
+        );
+        let joint_point = Rc::new(RefCell::new(JoinPoint::new(mut_next)));
+        let joint_point2 = joint_point.clone();
+        self.0.call_mut(
+            runtime,
+            move |r: &mut Runtime, p_v| joint_point.borrow_mut().call_ref(r, Left(p_v)));
+        self.1.call_mut(
+            runtime,
+            move |r: &mut Runtime, p_v| joint_point2.borrow_mut().call_ref(r, Right(p_v)));
+    }
+}
+
 /// Used by `Join` as a barrier for two processes.
 struct JoinPoint<V1, V2, C> {
     counter: i32,

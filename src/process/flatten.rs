@@ -12,3 +12,14 @@ impl<P> Process for Flatten<P> where P: Process, P::Value: Process {
         self.0.call(runtime, c);
     }
 }
+
+impl<P> ProcessMut for Flatten<P> where P: ProcessMut, P::Value: Process {
+    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
+        where Self:Sized, C: Continuation<(Self, Self::Value)>
+    {
+        let c = |r: &mut Runtime, (p_old, p_new): (P, P::Value)| {
+            p_new.call(r, next.map(|v| (p_old.flatten(), v)));
+        };
+        self.0.call_mut(runtime, c);
+    }
+}

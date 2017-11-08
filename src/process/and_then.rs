@@ -24,7 +24,7 @@ impl<P1, P2, F> ProcessMut for AndThen<P1, F>
     {
         let mut chain = self.chain;
         let c = |r: &mut Runtime, (process, v): (P1, P1::Value)| {
-            chain(v).map(|v2| (process.and_then(chain), v2)).call(r, next);
+            chain(v).call(r, next.map(|v2| (process.and_then(chain), v2)));
         };
         self.process.call_mut(runtime, c);
     }
