@@ -1,0 +1,13 @@
+use {Runtime, Continuation};
+use process::{Process, ProcessMut};
+
+/// The process is suspended until next instant.
+pub struct Pause<P>(pub(crate) P);
+
+impl<P> Process for Pause<P> where P: Process {
+    type Value = P::Value;
+
+    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
+        self.0.call(runtime, next.pause());
+    }
+}

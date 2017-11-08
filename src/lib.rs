@@ -6,4 +6,4 @@ pub mod process;
 
 pub use continuation::Continuation;
 pub use runtime::Runtime;
-pub use process::Process;
+pub use process::{Process, ProcessMut, execute_process, value};

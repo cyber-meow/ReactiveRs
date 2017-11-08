@@ -1,5 +1,5 @@
-use { Runtime, Continuation, Process };
-use process::{ Value, AndThen };
+use {Runtime, Continuation};
+use process::Process;
 
 /// A process that can be executed multiple times, modifying its environement each time.
 pub trait ProcessMut: Process {
@@ -39,28 +39,5 @@ impl<P, C, V> Continuation<(P, P::Value)> for WhileContinuation<C>
 
     fn call_box(self: Box<Self>, runtime: &mut Runtime, value: (P, LoopStatus<V>)) {
         (*self).call(runtime, value);
-    }
-}
-
-impl<V> ProcessMut for Value<V> where V: Copy + 'static {
-    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
-        where Self: Sized, C: Continuation<(Self, Self::Value)>
-    {
-        let v = self.0;
-        next.call(runtime, (self, v));
-    }
-}
-
-impl<P1, P2, F> ProcessMut for AndThen<P1, F>
-    where P1: ProcessMut, P2: Process, F: FnMut(P1::Value) -> P2 + 'static
-{
-    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
-        where Self: Sized, C: Continuation<(Self, Self::Value)>
-    {
-        let mut chain = self.chain;
-        let c = |r: &mut Runtime, (process, v): (P1, P1::Value)| {
-            chain(v).map(|v2| (process.and_then(chain), v2)).call(r, next);
-        };
-        self.process.call_mut(runtime, c);
     }
 }
