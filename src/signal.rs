@@ -14,6 +14,7 @@ pub struct SignalRuntimeRef {
 struct SignalRuntime {
     emitted: RefCell<bool>,
     await_works: RefCell<Vec<Box<Continuation<()>>>>,
+    present_works: RefCell<Vec<Box<Continuation<()>>>>,
 }
 
 impl SignalRuntime {
@@ -22,6 +23,7 @@ impl SignalRuntime {
         SignalRuntime {
             emitted: RefCell::new(false),
             await_works: RefCell::new(Vec::new()),
+            present_works: RefCell::new(Vec::new()),
         }
     }
 }
@@ -33,25 +35,47 @@ impl SignalRuntimeRef {
     }
 
     /// Sets the signal as emitted for the current instant.
-    fn emit(self, runtime: &mut Runtime) {
+    fn emit(&mut self, runtime: &mut Runtime) {
         *self.runtime.emitted.borrow_mut() = true;
         while let Some(c) = self.runtime.await_works.borrow_mut().pop() {
             c.call_box(runtime, ());
         }
-        runtime.emit_signal(self);
+        self.execute_present_works(runtime);
+        runtime.emit_signal(self.clone());
+    }
+
+    /// Returns a bool to indicate if the signal was emitted or not on the current instant.
+    fn is_emitted(&self) -> bool {
+        *self.runtime.emitted.borrow()
     }
 
     /// Resets the signal at the beginning of each instant.
-    pub(crate) fn reset(self) {
+    pub(crate) fn reset(&mut self) {
         *self.runtime.emitted.borrow_mut() = false;
     }
 
     /// Calls `c` at the first cycle where the signal is present.
-    fn on_signal<C>(self, runtime: &mut Runtime, c: C) where C: Continuation<()> {
+    fn on_signal<C>(&mut self, runtime: &mut Runtime, c: C) where C: Continuation<()> {
         if *self.runtime.emitted.borrow() {
             c.call(runtime, ());
         } else {
             self.runtime.await_works.borrow_mut().push(Box::new(c));
+        }
+    }
+    
+    /// Calls `c` only if the signal is present during this cycle.
+    fn on_signal_present<C>(&mut self, runtime: &mut Runtime, c: C) where C: Continuation<()> {
+        if *self.runtime.emitted.borrow() {
+            c.call(runtime, ());
+        } else {
+            self.runtime.present_works.borrow_mut().push(Box::new(c));
+        }
+    }
+
+    /// Exececutes all the continuations found in the vector `self.present_works`.
+    pub(crate) fn execute_present_works(&mut self, runtime: &mut Runtime) {
+        while let Some(c) = self.runtime.present_works.borrow_mut().pop() {
+            c.call_box(runtime, ());
         }
     }
 
@@ -74,7 +98,43 @@ pub trait Signal: 'static {
         AwaitImmediate(self)
     }
 
+    fn presente_else<P1, P2>(self, p1: P1, p2: P2) -> PresentElse<Self, P1, P2>
+        where Self: Sized, P1: Process, P2: Process
+    {
+        PresentElse {
+            signal: self,
+            present_proc: p1,
+            else_proc: p2,
+        }
+    }
+
     // TODO: add other methods if needed.
+}
+
+pub struct PresentElse<S, P1, P2> {
+    signal: S,
+    present_proc: P1,
+    else_proc: P2,
+}
+
+impl<S, P1, P2, V> Process for PresentElse<S, P1, P2>
+    where S: Signal, P1: Process<Value=V>, P2: Process<Value=V>
+{
+    type Value = V;
+    
+    fn call<C>(mut self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
+        let mut signal_runtime = self.signal.runtime();
+        let c = |r: &mut Runtime, ()| {
+            if self.signal.runtime().is_emitted() {
+                self.present_proc.call(r, next);
+            } else {
+                r.on_next_instant(Box::new(
+                    move |r: &mut Runtime, ()| self.else_proc.call(r, next)));
+            }
+        };
+        signal_runtime.on_signal_present(runtime, c);
+        runtime.add_test_signal(signal_runtime);
+    }
 }
 
 pub struct AwaitImmediate<S>(S);
@@ -91,10 +151,9 @@ impl<S> ProcessMut for AwaitImmediate<S> where S: Signal {
     fn call_mut<C>(mut self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
     {
-        let singal_runtime_ref = self.0.runtime().clone();
-        singal_runtime_ref.on_signal(
+        self.0.runtime().on_signal(
             runtime,
-            next.map(|_| (self, ()))
+            next.map(|()| (self, ()))
         );
     }
 }
