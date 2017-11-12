@@ -14,7 +14,7 @@ impl<P> Process for Pause<P> where P: Process {
 
 impl<P> ProcessMut for Pause<P> where P: ProcessMut {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
-        where Self: Sized, C: Continuation<(Self, Self::Value)>,
+        where Self: Sized, C: Continuation<(Self, Self::Value)>
     {
         self.0.call_mut(
             runtime,

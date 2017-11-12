@@ -18,7 +18,7 @@ impl<P, F, V> ProcessMut for Map<P,F>
     where P: ProcessMut, F: FnMut(P::Value) -> V + 'static
 {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
-        where Self: Sized, C: Continuation<(Self, Self::Value)>,
+        where Self: Sized, C: Continuation<(Self, Self::Value)>
     {
         let process = self.process;
         let mut f = self.map;
