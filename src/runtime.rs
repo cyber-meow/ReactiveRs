@@ -9,7 +9,9 @@ pub struct Runtime {
     next_instant_works: Rc<Vec<Box<Continuation<()>>>>,
     end_of_instant_works: Vec<Box<Continuation<()>>>,
     emitted_signals: Vec<SignalRuntimeRef>,
+    await_counter: usize,
     test_presence_signals: Vec<SignalRuntimeRef>,
+    instant: i64,
 }
 
 impl Runtime {
@@ -20,7 +22,9 @@ impl Runtime {
             next_instant_works: Rc::new(Vec::new()),
             end_of_instant_works: Vec::new(),
             emitted_signals: Vec::new(),
+            await_counter: 0,
             test_presence_signals: Vec::new(),
+            instant: 0,
         }
     }
 
@@ -31,6 +35,8 @@ impl Runtime {
 
     /// Executes a single instant to completion. Indicates if more work remains to be done.
     pub fn instant(&mut self) -> bool {
+        println!("instant {}", self.instant);
+        self.instant += 1;
         while let Some(work) = Rc::get_mut(&mut self.current_instant_works).unwrap().pop() {
             work.call_box(self, ());
         }
@@ -38,7 +44,7 @@ impl Runtime {
             work.call_box(self, ());
         }
         self.end_of_instant();
-        self.current_instant_works.len() != 0
+        self.current_instant_works.len() != 0 || self.await_counter > 0
     }
     
     fn end_of_instant(&mut self) {
@@ -61,6 +67,17 @@ impl Runtime {
     /// Registers a continuation to execute at the next instant.
     pub(crate) fn on_next_instant(&mut self, c: Box<Continuation<()>>) {
         Rc::get_mut(&mut self.next_instant_works).unwrap().push(c);
+    }
+
+    /// Increases the await counter by 1 when some process await a signal to continue.
+    pub(crate) fn incr_await_counter(&mut self) {
+        self.await_counter += 1;
+    }
+
+    /// Decrease the await counter by 1 when some signal is emitted and
+    /// the corresponding process is thus executed.
+    pub(crate) fn decr_await_counter(&mut self) {
+        self.await_counter -= 1;
     }
 
     /// Registers a continuation to execute at the end of the instant. Runtime calls for `c`
