@@ -1,16 +1,16 @@
 use std::rc::Rc;
 
 use Continuation;
-use signal::SignalRuntimeRef;
+use signal::signal_runtime::SignalRuntimeRefBase;
 
 /// Runtime for executing reactive continuations.
 pub struct Runtime {
     current_instant_works: Rc<Vec<Box<Continuation<()>>>>,
     next_instant_works: Rc<Vec<Box<Continuation<()>>>>,
     end_of_instant_works: Vec<Box<Continuation<()>>>,
-    emitted_signals: Vec<SignalRuntimeRef>,
+    emitted_signals: Vec<Box<SignalRuntimeRefBase>>,
     await_counter: usize,
-    test_presence_signals: Vec<SignalRuntimeRef>,
+    test_presence_signals: Vec<Box<SignalRuntimeRefBase>>,
     instant: i64,
 }
 
@@ -48,11 +48,11 @@ impl Runtime {
     }
     
     fn end_of_instant(&mut self) {
-        while let Some(mut s) = self.test_presence_signals.pop() {
-            s.execute_present_works(self);
+        while let Some(s) = self.test_presence_signals.pop() {
+            s.execute_present_works_box(self);
         }
-        while let Some(mut s) = self.emitted_signals.pop() {
-            s.reset();
+        while let Some(s) = self.emitted_signals.pop() {
+            s.reset_box();
         }
         self.current_instant_works = self.next_instant_works.clone();
         self.next_instant_works = Rc::new(Vec::new());
@@ -87,12 +87,13 @@ impl Runtime {
     }
 
     /// Registers a emitted signal for the current instant.
-    pub(crate) fn emit_signal(&mut self, s: SignalRuntimeRef) {
-        self.emitted_signals.push(s);
+    pub(crate) fn emit_signal<SRR>(&mut self, s: SRR) where SRR: SignalRuntimeRefBase {
+        self.emitted_signals.push(Box::new(s));
     }
 
     /// Registers a signal for which we need to test its presence on the current instant.
-    pub(crate) fn add_test_signal(&mut self, s: SignalRuntimeRef) {
-        self.test_presence_signals.push(s);
+    pub(crate) fn add_test_signal<SRR>(&mut self, s: SRR) where SRR: SignalRuntimeRefBase
+    {
+        self.test_presence_signals.push(Box::new(s))
     }
 }
