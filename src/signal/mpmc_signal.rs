@@ -7,16 +7,21 @@ use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRef};
 
 /// A shared pointer to a signal runtime.
-#[derive(Clone)]
 pub struct MpmcSignalRuntimeRef<B, F> {
     runtime: Rc<MpmcSignalRuntime<B, F>>,
+}
+
+impl<B, F> Clone for MpmcSignalRuntimeRef<B, F> {
+    fn clone(&self) -> Self { 
+        MpmcSignalRuntimeRef { runtime: self.runtime.clone() }
+    }
 }
 
 /// Runtime for multi-produce, multi-consumer signals.
 struct MpmcSignalRuntime<B, F> {
     emitted: RefCell<bool>,
     default_value: B,
-    gather: F,
+    gather: RefCell<F>,
     value: RefCell<B>,
     await_works: RefCell<Vec<Box<Continuation<()>>>>,
     present_works: RefCell<Vec<Box<Continuation<()>>>>,
@@ -24,11 +29,11 @@ struct MpmcSignalRuntime<B, F> {
 
 impl<B, F> MpmcSignalRuntime<B, F> where B: Clone {
     /// Returns a new instance of SignalRuntime.
-    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, B) -> B {
+    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
         MpmcSignalRuntime {
             emitted: RefCell::new(false),
             default_value: default.clone(),
-            gather: gather,
+            gather: RefCell::new(gather),
             value: RefCell::new(default),
             await_works: RefCell::new(Vec::new()),
             present_works: RefCell::new(Vec::new()),
@@ -86,35 +91,46 @@ impl<B, F> SignalRuntimeRef for MpmcSignalRuntimeRef<B, F>
 
 impl<B, F> MpmcSignalRuntimeRef<B, F> where B: Clone + 'static {
     /// Returns a new instance of SignalRuntimeRef.
-    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, B) -> B {
+    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
         MpmcSignalRuntimeRef {
             runtime: Rc::new(MpmcSignalRuntime::new(default, gather)),
         }
     }
-}
-    // Sets the signal as emitted for the current instant.
-    /*fn emit(&mut self, runtime: &mut Runtime) {
+
+    /// Sets the signal as emitted for the current instant.
+    fn emit<A>(&mut self, runtime: &mut Runtime, value: A) where F: FnMut(A, &mut B) + 'static {
         *self.runtime.emitted.borrow_mut() = true;
+        {
+            let v = &self.runtime.value;
+            let gather = &mut *self.runtime.gather.borrow_mut();
+            gather(value, &mut v.borrow_mut());
+        }
         while let Some(c) = self.runtime.await_works.borrow_mut().pop() {
             runtime.decr_await_counter();
             c.call_box(runtime, ());
         }
         self.execute_present_works(runtime);
         runtime.emit_signal(self.clone());
-    }*/
-//}
-/*
-#[derive(Clone)]
-pub struct PureSignal(PureSignalRuntimeRef);
+    }
+}
 
-impl Signal for PureSignal {
-    type RuntimeReference = PureSignalRuntimeRef;
+pub struct MpmcSignal<B, F>(MpmcSignalRuntimeRef<B, F>);
+
+impl<B, F> Clone for MpmcSignal<B, F> {
+    fn clone(&self) -> Self {
+        MpmcSignal(self.0.clone())
+    }
+}
+
+impl<B, F> Signal for MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
+    type RuntimeRef = MpmcSignalRuntimeRef<B, F>;
     
-    fn runtime(&mut self) -> PureSignalRuntimeRef {
+    fn runtime(&mut self) -> MpmcSignalRuntimeRef<B, F> {
         self.0.clone()
     }
 }
 
+/*
 impl PureSignal {
     /// Creates a new pure signal.
     pub fn new() -> Self {

@@ -95,7 +95,7 @@ impl PureSignalRuntimeRef {
 pub struct PureSignal(PureSignalRuntimeRef);
 
 impl Signal for PureSignal {
-    type RuntimeReference = PureSignalRuntimeRef;
+    type RuntimeRef = PureSignalRuntimeRef;
     
     fn runtime(&mut self) -> PureSignalRuntimeRef {
         self.0.clone()

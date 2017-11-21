@@ -11,10 +11,10 @@ mod mpmc_signal;
 /// A reactive signal.
 pub trait Signal: Clone + 'static {
     /// The runtime reference type associated with the signal.
-    type RuntimeReference: SignalRuntimeRef;
+    type RuntimeRef: SignalRuntimeRef;
 
     /// Returns a reference to the signal's runtime.
-    fn runtime(&mut self) -> Self::RuntimeReference;
+    fn runtime(&mut self) -> Self::RuntimeRef;
 
     /// Returns a process that waits for the next emission of the signal, current instant
     /// included.
