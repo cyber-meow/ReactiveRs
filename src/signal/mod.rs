@@ -6,6 +6,7 @@ use self::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRef};
 
 mod pure_signal;
 pub use self::pure_signal::PureSignal;
+mod mpmc_signal;
 
 /// A reactive signal.
 pub trait Signal: Clone + 'static {
