@@ -25,3 +25,7 @@ path = "src/bin/signal/pure_signal_test.rs"
 [[bin]]
 name = "mpmc_signal_test"
 path = "src/bin/signal/mpmc_signal_test.rs"
+
+[[bin]]
+name = "while_signal"
+path = "src/bin/signal/while_signal.rs"
