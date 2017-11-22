@@ -110,10 +110,17 @@ impl<B, F> MpmcSignalRuntimeRef<B, F> where B: Clone + 'static, F: 'static {
             c.call_box(runtime, ());
         }
         self.execute_present_works(runtime);
-        runtime.emit_signal(self.clone());
+        runtime.emit_signal(Box::new(self.clone()));
+    }
+
+    /// Returns the value of the signal for the current instant.
+    /// The returned value is cloned and can thus be used directly.
+    fn get_value(&self) -> B {
+        self.runtime.value.borrow().clone()
     }
 }
 
+/// Interface of mpmc signal. This is what user is directly exposed to.
 pub struct MpmcSignal<B, F>(MpmcSignalRuntimeRef<B, F>);
 
 impl<B, F> Clone for MpmcSignal<B, F> {
@@ -131,35 +138,81 @@ impl<B, F> Signal for MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
 }
 
 impl<B, F> MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
-    /// Creates a new pure signal.
+    /// Creates a new mpmc signal.
     pub fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
         MpmcSignal(MpmcSignalRuntimeRef::new(default, gather))
     }
-}
-/*    
-    /// Returns a process that emits the signal when it is called.
-    pub fn emit(&mut self) -> Emit<Self> where Self: Sized {
-        Emit(self.clone())
+
+    /// Returns a process that emits the signal with value `emitted` when it is called.
+    pub fn emit<A>(&mut self, emitted: A) -> Emit<A, B, F>
+        where Self: Sized, F: FnMut(A, &mut B)
+    {
+        Emit { signal: self.clone(), emitted }
+    }
+
+    /// Waits the  signal to be emitted, gets its content and
+    /// terminates at the following instant.
+    pub fn await(&mut self) -> Await<B, F> where Self: Sized {
+        Await(self.clone())
     }
 }
 
-pub struct Emit<S>(S);
+pub struct Emit<A, B, F> {
+    signal: MpmcSignal<B, F>,
+    emitted: A,
+}
 
-impl Process for Emit<PureSignal> {
+impl<A, B, F> Process for Emit<A, B, F>
+    where A: 'static, B: Clone + 'static, F: FnMut(A, &mut B) + 'static
+{
     type Value = ();
 
     fn call<C>(mut self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
-        self.0.runtime().emit(runtime);
+        self.signal.runtime().emit(runtime, self.emitted);
         next.call(runtime, ());
     }
 }
 
-impl ProcessMut for Emit<PureSignal> {
+impl<A, B, F> ProcessMut for Emit<A, B, F>
+    where A: Clone + 'static, B: Clone + 'static, F: FnMut(A, &mut B) + 'static
+{
     fn call_mut<C>(mut self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
     {
-        self.0.runtime().emit(runtime);
+        self.signal.runtime().emit(runtime, self.emitted.clone());
         next.call(runtime, (self, ()));
     }
 }
-*/
+
+pub struct Await<B, F>(MpmcSignal<B, F>);
+
+impl<B, F> Process for Await<B, F> where B: Clone + 'static, F: 'static {
+    type Value = B;
+    
+    fn call<C>(mut self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
+        let signal_runtime = self.0.runtime();
+        let eoi_continuation = move |r: &mut Runtime, ()| {
+            let stored = signal_runtime.get_value();
+            r.on_next_instant(Box::new(|r: &mut Runtime, ()| next.call(r, stored)));
+        };
+        self.0.runtime().on_signal(
+            runtime,
+            |r: &mut Runtime, ()| r.on_end_of_instant(Box::new(eoi_continuation)));
+    }
+}
+
+impl <B, F> ProcessMut for Await<B, F> where B: Clone + 'static, F: 'static {
+    fn call_mut<C>(mut self, runtime: &mut Runtime, next: C)
+        where Self: Sized, C: Continuation<(Self, Self::Value)>
+    {
+        let signal_runtime = self.0.runtime();
+        let mut signal_runtime2 = self.0.runtime();
+        let eoi_continuation = move |r: &mut Runtime, ()| {
+            let stored = signal_runtime.get_value();
+            r.on_next_instant(Box::new(|r: &mut Runtime, ()| next.call(r, (self, stored))));
+        };
+        signal_runtime2.on_signal(
+            runtime,
+            |r: &mut Runtime, ()| r.on_end_of_instant(Box::new(eoi_continuation)));
+    }
+}
