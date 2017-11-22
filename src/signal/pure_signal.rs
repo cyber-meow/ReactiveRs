@@ -87,15 +87,16 @@ impl PureSignalRuntimeRef {
             c.call_box(runtime, ());
         }
         self.execute_present_works(runtime);
-        runtime.emit_signal(self.clone());
+        runtime.emit_signal(Box::new(self.clone()));
     }
 }
 
+/// Interface of pure signal, to be used by the user.
 #[derive(Clone)]
 pub struct PureSignal(PureSignalRuntimeRef);
 
 impl Signal for PureSignal {
-    type RuntimeReference = PureSignalRuntimeRef;
+    type RuntimeRef = PureSignalRuntimeRef;
     
     fn runtime(&mut self) -> PureSignalRuntimeRef {
         self.0.clone()
@@ -109,14 +110,14 @@ impl PureSignal {
     }
     
     /// Returns a process that emits the signal when it is called.
-    pub fn emit(&mut self) -> Emit<Self> where Self: Sized {
+    pub fn emit(&mut self) -> Emit where Self: Sized {
         Emit(self.clone())
     }
 }
 
-pub struct Emit<S>(S);
+pub struct Emit(PureSignal);
 
-impl Process for Emit<PureSignal> {
+impl Process for Emit {
     type Value = ();
 
     fn call<C>(mut self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
@@ -125,7 +126,7 @@ impl Process for Emit<PureSignal> {
     }
 }
 
-impl ProcessMut for Emit<PureSignal> {
+impl ProcessMut for Emit {
     fn call_mut<C>(mut self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
     {

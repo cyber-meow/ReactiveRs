@@ -6,14 +6,21 @@ use self::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRef};
 
 mod pure_signal;
 pub use self::pure_signal::PureSignal;
+mod mpmc_signal;
+pub use self::mpmc_signal::MpmcSignal;
 
-/// A reactive signal.
+/// A reactive signal.  
+/// The signal implement the trait `Clone` to assure that it can be used multiple times
+/// in the program. However, note that for most of the constructions `clone` is used
+/// implicitly so one can pass the signal directly.
+/// The user needs to call `clone` explicitly only in scenarios where the signal's
+/// ownership must be shared in different places, ex: closure.
 pub trait Signal: Clone + 'static {
     /// The runtime reference type associated with the signal.
-    type RuntimeReference: SignalRuntimeRef;
+    type RuntimeRef: SignalRuntimeRef;
 
     /// Returns a reference to the signal's runtime.
-    fn runtime(&mut self) -> Self::RuntimeReference;
+    fn runtime(&mut self) -> Self::RuntimeRef;
 
     /// Returns a process that waits for the next emission of the signal, current instant
     /// included.
@@ -21,8 +28,10 @@ pub trait Signal: Clone + 'static {
         AwaitImmediate(self.clone())
     }
 
-    fn present_else<P1, P2>(&mut self, p1: P1, p2: P2) -> PresentElse<Self, P1, P2>
-        where Self: Sized, P1: Process, P2: Process
+    /// Test the status of a signal `s`. If the signal is present, the process `p1`
+    /// is executed instantaneously, other wise `p2` is executed at the following instant.
+    fn present_else<P1, P2, V>(&mut self, p1: P1, p2: P2) -> PresentElse<Self, P1, P2>
+        where Self: Sized, P1: Process<Value=V>, P2: Process<Value=V>
     {
         PresentElse {
             signal: self.clone(),
@@ -32,6 +41,7 @@ pub trait Signal: Clone + 'static {
     }
 }
 
+/// Process that awaits the emission of a signal.
 pub struct AwaitImmediate<S>(S);
 
 impl<S> Process for AwaitImmediate<S> where S: Signal {
@@ -53,6 +63,8 @@ impl<S> ProcessMut for AwaitImmediate<S> where S: Signal {
     }
 }
 
+/// Process that tests the status of a signal and chooses the branch to execute
+/// according to the result.
 pub struct PresentElse<S, P1, P2> {
     signal: S,
     present_proc: P1,
@@ -70,12 +82,13 @@ impl<S, P1, P2, V> Process for PresentElse<S, P1, P2>
             if self.signal.runtime().is_emitted() {
                 self.present_proc.call(r, next);
             } else {
-                r.on_next_instant(Box::new(
-                    move |r: &mut Runtime, ()| self.else_proc.call(r, next)));
+                let else_continuation =
+                    move |r: &mut Runtime, ()| { self.else_proc.call(r, next) };
+                r.on_next_instant(Box::new(else_continuation));
             }
         };
         signal_runtime.on_signal_present(runtime, c);
-        runtime.add_test_signal(signal_runtime);
+        runtime.add_test_signal(Box::new(signal_runtime));
     }
 }
 
@@ -93,17 +106,14 @@ impl <S, P1, P2, V> ProcessMut for PresentElse<S, P1, P2>
                 present_proc.call_mut(
                     r, next.map(move |(p, v)| (signal.present_else(p, else_proc), v)))
             } else {
-                r.on_next_instant(Box::new(
-                    move |r: &mut Runtime, ()| {
-                        else_proc.call_mut(
-                            r,
-                            next.map(move |(p, v)| (signal.present_else(present_proc, p), v))
-                        )
-                    }
-                ));
+                let else_continuation = |r: &mut Runtime, ()| {
+                    else_proc.call_mut(r, next.map(
+                        move |(p, v)| (signal.present_else(present_proc, p), v)))
+                };
+                r.on_next_instant(Box::new(else_continuation));
             }
         };
         signal_runtime.on_signal_present(runtime, c);
-        runtime.add_test_signal(signal_runtime);
+        runtime.add_test_signal(Box::new(signal_runtime));
     }   
 }

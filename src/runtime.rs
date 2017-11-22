@@ -69,6 +69,12 @@ impl Runtime {
         Rc::get_mut(&mut self.next_instant_works).unwrap().push(c);
     }
 
+    /// Registers a continuation to execute at the end of the instant. Runtime calls for `c`
+    /// behave as if they where executed during the next instant.
+    pub(crate) fn on_end_of_instant(&mut self, c: Box<Continuation<()>>) {
+        self.end_of_instant_works.push(c);
+    }
+
     /// Increases the await counter by 1 when some process await a signal to continue.
     pub(crate) fn incr_await_counter(&mut self) {
         self.await_counter += 1;
@@ -80,20 +86,13 @@ impl Runtime {
         self.await_counter -= 1;
     }
 
-    /// Registers a continuation to execute at the end of the instant. Runtime calls for `c`
-    /// behave as if they where executed during the next instant.
-    pub(crate) fn on_end_of_instant(&mut self, c: Box<Continuation<()>>) {
-        self.end_of_instant_works.push(c);
-    }
-
     /// Registers a emitted signal for the current instant.
-    pub(crate) fn emit_signal<SRR>(&mut self, s: SRR) where SRR: SignalRuntimeRefBase {
-        self.emitted_signals.push(Box::new(s));
+    pub(crate) fn emit_signal(&mut self, s: Box<SignalRuntimeRefBase>) {
+        self.emitted_signals.push(s);
     }
 
     /// Registers a signal for which we need to test its presence on the current instant.
-    pub(crate) fn add_test_signal<SRR>(&mut self, s: SRR) where SRR: SignalRuntimeRefBase
-    {
-        self.test_presence_signals.push(Box::new(s))
+    pub(crate) fn add_test_signal(&mut self, s: Box<SignalRuntimeRefBase>) {
+        self.test_presence_signals.push(s);
     }
 }
