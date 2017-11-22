@@ -6,7 +6,7 @@ use reactive::signal::{Signal, MpmcSignal};
 
 fn main () {
     let gather = |x: isize, xs: &mut Vec<isize>| xs.push(x);
-    let mut s = MpmcSignal::new(Vec::new(), gather);
+    let s = MpmcSignal::new(Vec::new(), gather);
     let p1 = s.emit(3).pause();
     let p2 = s.await_immediate().map(|()| println!("receive s"));
     let print_s_value = |x| println!("The value of s is {:?}", x);

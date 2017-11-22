@@ -5,17 +5,6 @@ use reactive::process::{value, execute_process};
 use reactive::process::LoopStatus::{Continue, Exit};
 
 fn main () {
-    /*let while_cond = |()| {
-        if counter == 0 {
-            s.emit(counter).pause().map(|()| Exit(()))
-        } else if counter%2 == 0 {
-            counter -= 1;
-            s.emit(counter).pause().map(|()| Continue)
-        } else {
-            counter -= 1;
-            value(()).pause().map(|()| Continue)
-        }
-    };*/
     let mut counter = 0;
     let while_cond = move |n| {
         if counter == n {

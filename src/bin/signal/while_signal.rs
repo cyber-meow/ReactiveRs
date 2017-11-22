@@ -11,9 +11,9 @@ use reactive::signal::MpmcSignal;
 
 fn main () {
     let gather = |x: isize, xs: &mut Vec<isize>| xs.push(x);
-    let mut s = MpmcSignal::new(Vec::new(), gather);
+    let s = MpmcSignal::new(Vec::new(), gather);
     let counter = Rc::new(RefCell::new(0));
-    let mut s_clone = s.clone();
+    let s_clone = s.clone();
     let counter_clone = counter.clone();
     let decide_emit = move |n| {
         let v = *counter_clone.borrow();
