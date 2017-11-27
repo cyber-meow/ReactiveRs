@@ -1,10 +1,11 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, Barrier, Condvar};
+use crossbeam;
 use crossbeam::sync::chase_lev;
-use rand::weak_rng;
+use rand::{weak_rng, Rng};
 use ordermap::OrderSet;
 
-use parallel::continuation;
+use parallel::Continuation;
 use parallel::ParallelRuntime;
 use parallel::runtime::RuntimeStatus;
 
@@ -14,6 +15,9 @@ pub struct ParallelRuntimeCollection {
 
 impl ParallelRuntimeCollection {
     pub fn new(num_runtimes: usize) -> Self {
+        if num_runtimes == 0 {
+            panic!("There should be at least one runtime!");
+        }
         let mut runtimes = Vec::new();
         let mut workers = VecDeque::new();
         let mut stealers = Vec::new();
@@ -40,8 +44,22 @@ impl ParallelRuntimeCollection {
                 working_pool: working_pool.clone(),
                 whether_to_continue: whether_to_continue.clone(),
                 next_instant_works: Vec::new(),
+                instant: 0,
             })
         }
         ParallelRuntimeCollection { runtimes }
+    }
+
+    pub fn execute(&mut self) {
+        crossbeam::scope(|scope| {
+            for runtime in self.runtimes.iter_mut() {
+                scope.spawn(move || runtime.execute());
+            }
+        });
+    }
+
+    pub fn register_work(&mut self, c: Box<Continuation<()>>) {
+        let runtime = weak_rng().choose_mut(&mut self.runtimes).unwrap();
+        runtime.on_current_instant(c);
     }
 }

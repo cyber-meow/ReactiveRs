@@ -15,6 +15,7 @@ pub struct ParallelRuntime {
     pub(crate) working_pool: Arc<Mutex<OrderSet<usize>>>,
     pub(crate) whether_to_continue: Arc<(Mutex<RuntimeStatus>, Condvar)>,
     pub(crate) next_instant_works: Vec<Box<Continuation<()>>>,
+    pub(crate) instant: usize,
 }
 
 pub(crate) enum RuntimeStatus {
@@ -31,6 +32,7 @@ impl ParallelRuntime {
 
     /// Executes a single instant to completion. Indicates if more work remains to be done.
     pub fn instant(&mut self) -> bool {
+        println!("Thread {}: instant {}.", self.id, self.instant);
         loop {
             if let Some(work) = self.worker.try_pop() {
                 work.call_box(self, ());
@@ -45,6 +47,8 @@ impl ParallelRuntime {
             let mut runtime_status = lock.lock().unwrap();
             *runtime_status = RuntimeStatus::Undetermined(0);
         }
+        println!("Thread {}: sleep.", self.id);
+        self.instant += 1;
         self.barrier.wait();
         self.end_of_instant()
     }
@@ -55,6 +59,7 @@ impl ParallelRuntime {
         {
             let mut working_pool = self.working_pool.lock().unwrap();
             assert!(working_pool.remove(&self.id));
+            println!("Thread {}: try to steal.", self.id);
         }
         loop {
             let working_pool = self.working_pool.lock().unwrap();
@@ -77,6 +82,7 @@ impl ParallelRuntime {
                 chase_lev::Steal::Data(work) => {
                     let mut working_pool = self.working_pool.lock().unwrap();
                     assert!(working_pool.insert(self.id));
+                    println!("Thread {}: steal success.", self.id);
                     return Some(work);
                 },
                 _ => continue,
