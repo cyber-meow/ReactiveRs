@@ -56,7 +56,6 @@ impl Runtime {
         }
         self.current_instant_works = self.next_instant_works.clone();
         self.next_instant_works = Rc::new(Vec::new());
-        self.end_of_instant_works = Vec::new();
     }
 
     /// Registers a continuation to execute on the current instant.
