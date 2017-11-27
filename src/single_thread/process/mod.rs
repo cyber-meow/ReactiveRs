@@ -38,8 +38,8 @@ pub trait Process: 'static {
 
     /// Applies a function to the value returned by the process before passing it to
     /// its continuation.
-    fn map<F, V>(self, map: F) -> 
-        Map<Self, F> where Self: Sized, F: FnOnce(Self::Value) -> V + 'static
+    fn map<F, V>(self, map: F) -> Map<Self, F>
+        where Self: Sized, F: FnOnce(Self::Value) -> V + 'static
     {
         Map { process: self, map }
     }
@@ -50,8 +50,8 @@ pub trait Process: 'static {
     }
 
     /// Chains another process after the exectution of one process (like the `bind` for a monad).
-    fn and_then<F, P>(self, chain: F) ->
-        AndThen<Self, F> where Self: Sized, F: FnOnce(Self::Value) -> P + 'static, P: Process
+    fn and_then<F, P>(self, chain: F) -> AndThen<Self, F>
+        where Self: Sized, F: FnOnce(Self::Value) -> P + 'static, P: Process
     {
         AndThen { process: self, chain }
     }
@@ -88,8 +88,9 @@ pub fn execute_process<P>(p: P) -> P::Value where P: Process {
     let mut runtime = Runtime::new();
     let res: Rc<RefCell<Option<P::Value>>> = Rc::new(RefCell::new(None));
     let res2 = res.clone();
-    let c = move |_: &mut Runtime, v| { *res2.borrow_mut() = Some(v); drop(res2) };
+    let c = move |_: &mut Runtime, v| *res2.borrow_mut() = Some(v);
     runtime.on_current_instant(Box::new(|r: &mut Runtime, _| p.call(r, c)));
     runtime.execute();
-    Rc::try_unwrap(res).map_err(|_| ()).unwrap().into_inner().unwrap()
+    let mut res = res.borrow_mut();
+    res.take().unwrap()
 }

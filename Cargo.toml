@@ -11,28 +11,32 @@ ordermap = "0.3.2"
 
 [[bin]]
 name = "process42"
-path = "src/bin/basic/process42.rs"
+path = "src/single_thread/bin/basic/process42.rs"
 
 [[bin]]
 name = "continuation42"
-path = "src/bin/basic/continuation42.rs"
+path = "src/single_thread/bin/basic/continuation42.rs"
 
 [[bin]]
 name = "while_test"
-path = "src/bin/basic/while_test.rs"
+path = "src/single_thread/bin/basic/while_test.rs"
 
 [[bin]]
 name = "pure_signal_test"
-path = "src/bin/signal/pure_signal_test.rs"
+path = "src/single_thread/bin/signal/pure_signal_test.rs"
 
 [[bin]]
 name = "mpmc_signal_test"
-path = "src/bin/signal/mpmc_signal_test.rs"
+path = "src/single_thread/bin/signal/mpmc_signal_test.rs"
 
 [[bin]]
 name = "while_signal"
-path = "src/bin/signal/while_signal.rs"
+path = "src/single_thread/bin/signal/while_signal.rs"
 
 [[bin]]
 name = "p_continuation42"
 path = "src/parallel/bin/continuation42.rs"
+
+[[bin]]
+name = "p_process42"
+path = "src/parallel/bin/process42.rs"

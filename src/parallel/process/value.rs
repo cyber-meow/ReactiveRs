@@ -1,15 +1,15 @@
-use {Runtime, Continuation};
-use process::{Process, ProcessMut};
+use parallel::{Runtime, Continuation};
+use parallel::process::{Process, ProcessMut};
 
 /// Create a new process that returns the value v immediately.
-pub fn value<V>(v: V) -> Value<V> {
+pub fn value<V>(v: V) -> Value<V> where V: Send + 'static {
     Value(v)
 }
 
 /// A process that returns a value of type V.
 pub struct Value<V>(V);
 
-impl<V> Process for Value<V> where V: 'static {
+impl<V> Process for Value<V> where V: Send + 'static {
     type Value = V;
     
     fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<V> {
@@ -17,7 +17,7 @@ impl<V> Process for Value<V> where V: 'static {
     }
 }
 
-impl<V> ProcessMut for Value<V> where V: Copy + 'static {
+impl<V> ProcessMut for Value<V> where V: Copy + Send + 'static {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
     {

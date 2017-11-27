@@ -5,7 +5,7 @@ use ordermap::OrderSet;
 
 use parallel::Continuation;
 
-pub struct ParallelRuntime {
+pub struct Runtime {
     pub(crate) id: usize,
     pub(crate) num_threads_total: usize,
     pub(crate) worker: chase_lev::Worker<Box<Continuation<()>>>,
@@ -24,7 +24,7 @@ pub(crate) enum RuntimeStatus {
     Finished,
 }
 
-impl ParallelRuntime {
+impl Runtime {
     /// Executes instants until all work is completed.
     pub fn execute(&mut self) {
         while self.instant() {};
@@ -35,8 +35,10 @@ impl ParallelRuntime {
         println!("Thread {}: instant {}.", self.id, self.instant);
         loop {
             if let Some(work) = self.worker.try_pop() {
+                println!("Thread {}: work.", self.id);
                 work.call_box(self, ());
             } else if let Some(work) = self.try_steal() {
+                println!("Thread {}: work.", self.id);
                 work.call_box(self, ());
             } else {
                 break;

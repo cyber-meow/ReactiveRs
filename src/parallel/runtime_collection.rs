@@ -6,14 +6,14 @@ use rand::{weak_rng, Rng};
 use ordermap::OrderSet;
 
 use parallel::Continuation;
-use parallel::ParallelRuntime;
+use parallel::Runtime;
 use parallel::runtime::RuntimeStatus;
 
-pub struct ParallelRuntimeCollection {
-    runtimes: Vec<ParallelRuntime>,
+pub struct RuntimeCollection {
+    runtimes: Vec<Runtime>,
 }
 
-impl ParallelRuntimeCollection {
+impl RuntimeCollection {
     pub fn new(num_runtimes: usize) -> Self {
         if num_runtimes == 0 {
             panic!("There should be at least one runtime!");
@@ -34,7 +34,7 @@ impl ParallelRuntimeCollection {
         for i in 0..num_runtimes {
             let worker = workers.pop_front().unwrap();
             let stealers: Vec<_> = stealers.iter().map(|stealer| stealer.clone()).collect();
-            runtimes.push(ParallelRuntime {
+            runtimes.push(Runtime {
                 id: i,
                 num_threads_total: num_runtimes,
                 worker,
@@ -47,7 +47,7 @@ impl ParallelRuntimeCollection {
                 instant: 0,
             })
         }
-        ParallelRuntimeCollection { runtimes }
+        RuntimeCollection { runtimes }
     }
 
     pub fn execute(&mut self) {
