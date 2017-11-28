@@ -98,7 +98,7 @@ pub struct PureSignal(PureSignalRuntimeRef);
 impl Signal for PureSignal {
     type RuntimeRef = PureSignalRuntimeRef;
     
-    fn runtime(&mut self) -> PureSignalRuntimeRef {
+    fn runtime(&self) -> PureSignalRuntimeRef {
         self.0.clone()
     }
 }
@@ -110,7 +110,7 @@ impl PureSignal {
     }
     
     /// Returns a process that emits the signal when it is called.
-    pub fn emit(&mut self) -> Emit where Self: Sized {
+    pub fn emit(&self) -> Emit where Self: Sized {
         Emit(self.clone())
     }
 }
@@ -120,14 +120,14 @@ pub struct Emit(PureSignal);
 impl Process for Emit {
     type Value = ();
 
-    fn call<C>(mut self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
+    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
         self.0.runtime().emit(runtime);
         next.call(runtime, ());
     }
 }
 
 impl ProcessMut for Emit {
-    fn call_mut<C>(mut self, runtime: &mut Runtime, next: C)
+    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
     {
         self.0.runtime().emit(runtime);

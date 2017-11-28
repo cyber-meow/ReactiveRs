@@ -5,7 +5,7 @@ use reactive::process::{value, execute_process};
 use reactive::signal::{Signal, PureSignal};
 
 fn main () {
-    let mut s = PureSignal::new();
+    let s = PureSignal::new();
     let p1 = s.emit().pause().loop_proc();
     let receive_cl = |()| println!("s received");
     let p2= s.await_immediate().map(receive_cl).pause().loop_proc();

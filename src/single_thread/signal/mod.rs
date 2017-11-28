@@ -20,17 +20,17 @@ pub trait Signal: Clone + 'static {
     type RuntimeRef: SignalRuntimeRef;
 
     /// Returns a reference to the signal's runtime.
-    fn runtime(&mut self) -> Self::RuntimeRef;
+    fn runtime(&self) -> Self::RuntimeRef;
 
     /// Returns a process that waits for the next emission of the signal, current instant
     /// included.
-    fn await_immediate(&mut self) -> AwaitImmediate<Self> where Self: Sized {
+    fn await_immediate(&self) -> AwaitImmediate<Self> where Self: Sized {
         AwaitImmediate(self.clone())
     }
 
     /// Test the status of a signal `s`. If the signal is present, the process `p1`
     /// is executed instantaneously, other wise `p2` is executed at the following instant.
-    fn present_else<P1, P2, V>(&mut self, p1: P1, p2: P2) -> PresentElse<Self, P1, P2>
+    fn present_else<P1, P2, V>(&self, p1: P1, p2: P2) -> PresentElse<Self, P1, P2>
         where Self: Sized, P1: Process<Value=V>, P2: Process<Value=V>
     {
         PresentElse {
@@ -47,13 +47,13 @@ pub struct AwaitImmediate<S>(S);
 impl<S> Process for AwaitImmediate<S> where S: Signal {
     type Value = ();
     
-    fn call<C>(mut self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
+    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
         self.0.runtime().on_signal(runtime, next);
     }
 }
 
 impl<S> ProcessMut for AwaitImmediate<S> where S: Signal {
-    fn call_mut<C>(mut self, runtime: &mut Runtime, next: C)
+    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
     {
         self.0.runtime().on_signal(
@@ -76,7 +76,7 @@ impl<S, P1, P2, V> Process for PresentElse<S, P1, P2>
 {
     type Value = V;
     
-    fn call<C>(mut self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
+    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
         let mut signal_runtime = self.signal.runtime();
         let c = |r: &mut Runtime, ()| {
             if self.signal.runtime().is_emitted() {
@@ -95,12 +95,12 @@ impl<S, P1, P2, V> Process for PresentElse<S, P1, P2>
 impl <S, P1, P2, V> ProcessMut for PresentElse<S, P1, P2>
     where S: Signal, P1: ProcessMut<Value=V>, P2: ProcessMut<Value=V>
 {
-    fn call_mut<C>(mut self, runtime: &mut Runtime, next: C)
+    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
     {
         let mut signal_runtime = self.signal.runtime();
         let c = move |r: &mut Runtime, ()| {
-            let mut signal = self.signal;
+            let signal = self.signal;
             let (else_proc, present_proc) = (self.else_proc, self.present_proc);
             if signal.runtime().is_emitted() {
                 present_proc.call_mut(
