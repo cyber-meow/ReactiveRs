@@ -17,12 +17,14 @@ impl<P1, P2> Process for Join<P1, P2> where P1: Process, P2: Process {
         let c1 = |r: &mut Runtime, ()| {
             proc1.call(
                 r,
-                move |r: &mut Runtime, v| joint_point.lock().unwrap().call_ref(r, Left(v)));
+                move |r: &mut Runtime, v|
+                    joint_point.lock().unwrap().call_ref(r, Left(v)));
         };
         let c2 = |r: &mut Runtime, ()| {
             proc2.call(
                 r,
-                move |r: &mut Runtime, v| joint_point2.lock().unwrap().call_ref(r, Right(v)));
+                move |r: &mut Runtime, v|
+                    joint_point2.lock().unwrap().call_ref(r, Right(v)));
         };
         runtime.on_current_instant(Box::new(c1));
         runtime.on_current_instant(Box::new(c2));
@@ -43,12 +45,14 @@ impl<P1, P2> ProcessMut for Join<P1, P2> where P1: ProcessMut, P2: ProcessMut {
         let c1 = |r: &mut Runtime, ()| {
             proc1.call_mut(
                 r,
-                move |r: &mut Runtime, p_v| joint_point.lock().unwrap().call_ref(r, Left(p_v)));
+                move |r: &mut Runtime, p_v|
+                    joint_point.lock().unwrap().call_ref(r, Left(p_v)));
         };
         let c2 = |r: &mut Runtime, ()| {
             proc2.call_mut(
                 r,
-                move |r: &mut Runtime, p_v| joint_point2.lock().unwrap().call_ref(r, Right(p_v)));
+                move |r: &mut Runtime, p_v|
+                    joint_point2.lock().unwrap().call_ref(r, Right(p_v)));
         };
         runtime.on_current_instant(Box::new(c1));
         runtime.on_current_instant(Box::new(c2));

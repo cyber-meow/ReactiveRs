@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 mod process_mut;
-pub use self::process_mut::ProcessMut;
+pub use self::process_mut::{ProcessMut, While, LoopStatus};
 
 mod value;
 mod pause;

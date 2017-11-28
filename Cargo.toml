@@ -40,3 +40,7 @@ path = "src/parallel/bin/continuation42.rs"
 [[bin]]
 name = "p_process42"
 path = "src/parallel/bin/process42.rs"
+
+[[bin]]
+name = "p_while_join_test"
+path = "src/parallel/bin/while_join_test.rs"
