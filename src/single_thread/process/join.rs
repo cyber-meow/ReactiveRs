@@ -1,6 +1,6 @@
 use std::rc::Rc;
-use std::cell::{ RefCell };
-use either::{ Either, Left, Right };
+use std::cell::RefCell;
+use either::{Either, Left, Right};
 
 use {Runtime, Continuation};
 use process::{Process, ProcessMut};
@@ -10,7 +10,7 @@ pub struct Join<P1, P2>(pub(crate) P1, pub(crate) P2);
 
 impl<P1, P2> Process for Join<P1, P2> where P1: Process, P2: Process {
     type Value = (P1::Value, P2::Value);
-    
+
     fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
         let joint_point = Rc::new(RefCell::new(JoinPoint::new(next)));
         let joint_point2 = joint_point.clone();
@@ -57,9 +57,9 @@ impl<V1, V2, C> JoinPoint<V1, V2, C> {
             continuation: Some(continuation),
         }
     }
-    
-    fn call_ref(&mut self, runtime: &mut Runtime, value: Either<V1, V2>) 
-        where V1: 'static, V2: 'static, C: Continuation<(V1, V2)>   
+
+    fn call_ref(&mut self, runtime: &mut Runtime, value: Either<V1, V2>)
+        where V1: 'static, V2: 'static, C: Continuation<(V1, V2)>
     {
         match value {
             Left(value1) => {

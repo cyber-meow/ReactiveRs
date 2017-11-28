@@ -1,9 +1,8 @@
-use std::rc::Rc;
-use std::cell::{ RefCell };
-use either::{ Either, Left, Right };
+use std::sync::{Arc, Mutex};
+use either::{Either, Left, Right};
 
-use {Runtime, Continuation};
-use process::{Process, ProcessMut};
+use parallel::{Runtime, Continuation};
+use parallel::process::{Process, ProcessMut};
 
 /// Parallel composition of two processes.
 pub struct Join<P1, P2>(pub(crate) P1, pub(crate) P2);
@@ -12,14 +11,21 @@ impl<P1, P2> Process for Join<P1, P2> where P1: Process, P2: Process {
     type Value = (P1::Value, P2::Value);
     
     fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
-        let joint_point = Rc::new(RefCell::new(JoinPoint::new(next)));
+        let joint_point = Arc::new(Mutex::new(JoinPoint::new(next)));
         let joint_point2 = joint_point.clone();
-        self.0.call(
-            runtime,
-            move |r: &mut Runtime, v| joint_point.borrow_mut().call_ref(r, Left(v)));
-        self.1.call(
-            runtime,
-            move |r: &mut Runtime, v| joint_point2.borrow_mut().call_ref(r, Right(v)));
+        let (proc1, proc2) = (self.0, self.1);
+        let c1 = |r: &mut Runtime, ()| {
+            proc1.call(
+                r,
+                move |r: &mut Runtime, v| joint_point.lock().unwrap().call_ref(r, Left(v)));
+        };
+        let c2 = |r: &mut Runtime, ()| {
+            proc2.call(
+                r,
+                move |r: &mut Runtime, v| joint_point2.lock().unwrap().call_ref(r, Right(v)));
+        };
+        runtime.on_current_instant(Box::new(c1));
+        runtime.on_current_instant(Box::new(c2));
     }
 }
 
@@ -31,14 +37,21 @@ impl<P1, P2> ProcessMut for Join<P1, P2> where P1: ProcessMut, P2: ProcessMut {
             |((p1, v1), (p2, v2)): ((P1, P1::Value), (P2, P2::Value))|
             (p1.join(p2), (v1, v2))
         );
-        let joint_point = Rc::new(RefCell::new(JoinPoint::new(mut_next)));
+        let joint_point = Arc::new(Mutex::new(JoinPoint::new(mut_next)));
         let joint_point2 = joint_point.clone();
-        self.0.call_mut(
-            runtime,
-            move |r: &mut Runtime, p_v| joint_point.borrow_mut().call_ref(r, Left(p_v)));
-        self.1.call_mut(
-            runtime,
-            move |r: &mut Runtime, p_v| joint_point2.borrow_mut().call_ref(r, Right(p_v)));
+        let (proc1, proc2) = (self.0, self.1);
+        let c1 = |r: &mut Runtime, ()| {
+            proc1.call_mut(
+                r,
+                move |r: &mut Runtime, p_v| joint_point.lock().unwrap().call_ref(r, Left(p_v)));
+        };
+        let c2 = |r: &mut Runtime, ()| {
+            proc2.call_mut(
+                r,
+                move |r: &mut Runtime, p_v| joint_point2.lock().unwrap().call_ref(r, Right(p_v)));
+        };
+        runtime.on_current_instant(Box::new(c1));
+        runtime.on_current_instant(Box::new(c2));
     }
 }
 

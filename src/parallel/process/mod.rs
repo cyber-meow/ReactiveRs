@@ -6,9 +6,19 @@ pub use self::process_mut::ProcessMut;
 mod value;
 mod pause;
 mod map;
+mod flatten;
+mod and_then;
+mod then;
+mod if_else;
+mod join;
 pub use self::value::{value, Value};
 pub use self::pause::Pause;
 pub use self::map::Map;
+pub use self::flatten::Flatten;
+pub use self::and_then::AndThen;
+pub use self::then::Then;
+pub use self::if_else::IfElse;
+pub use self::join::Join;
 
 use parallel::Continuation;
 use parallel::{Runtime, RuntimeCollection};
@@ -29,9 +39,50 @@ pub trait Process: Send + 'static {
     /// Applies a function to the value returned by the process before passing it to
     /// its continuation.
     fn map<F, V>(self, map: F) -> Map<Self, F>
-        where Self: Sized, F: FnOnce(Self::Value) -> V + Send + 'static, V: Send + 'static
+        where Self: Sized, F: FnOnce(Self::Value) -> V + Send + 'static, V: Send
     {
         Map { process: self, map }
+    }
+    
+    /// Flattens the execution of a process when its returned value is itself another process.
+    fn flatten(self) -> Flatten<Self> where Self: Sized, Self::Value: Process {
+        Flatten(self)
+    }
+    
+    /// Chains another process after the exectution of one process (like the `bind` for a monad).
+    fn and_then<F, P>(self, chain: F) -> AndThen<Self, F>
+        where Self: Sized, F: FnOnce(Self::Value) -> P + Send + 'static, P: Process
+    {
+        AndThen { process: self, chain }
+    }
+    
+    /// Executes a second process after one process terminates.
+    /// The returned value of the first process is ignored.
+    fn then<P>(self, successor: P) -> Then<Self, P> where Self: Sized, P: Process {
+        Then { process: self, successor }
+    }
+    
+    /// Decides whether to execute `if_branch` or `else_branch` according to
+    /// the returned value of `self`, which must be of type `bool`.  
+    /// The combinator `and_then` defined earlier together with the built-in
+    /// `if`-`else` branching in Rust cannot allow us to achieve the same purpose
+    /// since `if` branch and `else` branch in Rust must result in the same type.
+    fn if_else<P1, P2, V>(self, if_branch: P1, else_branch: P2) -> IfElse<Self, P1, P2>
+        where Self: Process<Value=bool> + Sized,
+              P1: Process<Value=V>,
+              P2: Process<Value=V>,
+              V: Send,
+    {
+        IfElse {
+            process: self,
+            if_branch,
+            else_branch,
+        }
+    }
+    
+    /// Executes two processes in parallel. 
+    fn join<P>(self, proc2: P) -> Join<Self, P> where Self: Sized, P: Process {
+        Join(self, proc2)
     }
 }
 

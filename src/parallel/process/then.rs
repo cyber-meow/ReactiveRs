@@ -1,5 +1,5 @@
-use {Runtime, Continuation};
-use process::{Process, ProcessMut};
+use parallel::{Runtime, Continuation};
+use parallel::process::{Process, ProcessMut};
 
 /// Executes the second process while ignoring the returned value of the first process.
 pub struct Then<P1, P2> { pub(crate) process: P1, pub(crate) successor: P2 }

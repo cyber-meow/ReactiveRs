@@ -41,13 +41,11 @@ impl<V, F> Continuation<V> for F where F: FnOnce(&mut Runtime, V) + Send + 'stat
 pub struct Map<C, F> { continuation: C, map: F }
 
 impl<C, F, V1, V2> Continuation<V1> for Map<C, F>
-    where C: Continuation<V2>, F: FnOnce(V1) -> V2 + Send + 'static, V2: Send + 'static
+    where C: Continuation<V2>, F: FnOnce(V1) -> V2 + Send + 'static, V2: Send
 {
     fn call(self, runtime: &mut Runtime, value: V1) {
         let v2 = (self.map)(value);
-        let c = self.continuation;
-        runtime.on_current_instant(
-            Box::new(|r: &mut Runtime, ()| c.call(r, v2)));
+        self.continuation.call(runtime, v2);
     }
 
     fn call_box(self: Box<Self>, runtime: &mut Runtime, value: V1) {

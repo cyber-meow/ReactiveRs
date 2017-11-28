@@ -7,10 +7,11 @@ pub trait ProcessMut: Process {
     /// process's return value.
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>;
-}
-/*
+
     /// A classic loop that continues or stops accroding to the returned value of the process.
-    fn while_proc<V>(self) -> While<Self> where Self: ProcessMut<Value=LoopStatus<V>> + Sized {
+    fn while_proc<V>(self) -> While<Self>
+        where Self: ProcessMut<Value=LoopStatus<V>> + Sized, V: Send
+    {
         While(self)
     }
 
@@ -27,7 +28,7 @@ pub enum LoopStatus<V> { Continue, Exit(V) }
 /// in which case the created process exits and returns `v`.
 pub struct While<P>(P);
 
-impl<P, V> Process for While<P> where P: ProcessMut<Value=LoopStatus<V>> {
+impl<P, V> Process for While<P> where P: ProcessMut<Value=LoopStatus<V>>, V: Send {
     type Value = V;
 
     fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
@@ -35,7 +36,7 @@ impl<P, V> Process for While<P> where P: ProcessMut<Value=LoopStatus<V>> {
     }
 }
 
-impl<P, V> ProcessMut for While<P> where P: ProcessMut<Value=LoopStatus<V>> {
+impl<P, V> ProcessMut for While<P> where P: ProcessMut<Value=LoopStatus<V>>, V: Send {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
     {
@@ -48,7 +49,7 @@ impl<P, V> ProcessMut for While<P> where P: ProcessMut<Value=LoopStatus<V>> {
 pub struct WhileContinuation<C>(C);
 
 impl<P, C, V> Continuation<(P, P::Value)> for WhileContinuation<C>
-    where P: ProcessMut<Value=LoopStatus<V>>, C: Continuation<(While<P>, V)>
+    where P: ProcessMut<Value=LoopStatus<V>>, C: Continuation<(While<P>, V)>, V: Send
 {
     fn call(self, runtime: &mut Runtime, (process, loop_status): (P, LoopStatus<V>)) {
         match loop_status {
@@ -93,4 +94,4 @@ impl<P> Continuation<(P, P::Value)> for LoopContinuation where P: ProcessMut<Val
     fn call_box(self: Box<Self>, runtime: &mut Runtime, value: (P, ())) {
         (*self).call(runtime, value);
     }
-}*/
+}
