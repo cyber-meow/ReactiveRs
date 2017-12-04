@@ -31,6 +31,8 @@ impl RuntimeCollection {
         let await_counter = Arc::new(AtomicUsize::new(0));
         let working_pool = Arc::new(
             Mutex::new((0..num_runtimes).collect::<OrderSet<_>>()));
+        let eoi_working_pool = Arc::new(
+            Mutex::new((0..num_runtimes).collect::<OrderSet<_>>()));
         let whether_to_continue = Arc::new(
             (Mutex::new(RuntimeStatus::WorkRemained), Condvar::new()));
         for i in 0..num_runtimes {
@@ -46,6 +48,8 @@ impl RuntimeCollection {
                 working_pool: working_pool.clone(),
                 whether_to_continue: whether_to_continue.clone(),
                 next_instant_works: Vec::new(),
+                end_of_instant_works: Vec::new(),
+                eoi_working_pool: eoi_working_pool.clone(),
                 emitted_signals: Vec::new(),
                 await_counter: await_counter.clone(),
                 test_presence_signals: Vec::new(),

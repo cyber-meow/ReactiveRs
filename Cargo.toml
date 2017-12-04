@@ -51,3 +51,7 @@ path = "src/parallel/bin/while_join_test.rs"
 [[bin]]
 name = "p_pure_signal_test"
 path = "src/parallel/bin/pure_signal_test.rs"
+
+[[bin]]
+name = "p_while_signal"
+path = "src/parallel/bin/while_signal.rs"

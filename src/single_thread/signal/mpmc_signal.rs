@@ -103,9 +103,9 @@ impl<B, F> MpmcSignalRuntimeRef<B, F> where B: Clone + 'static, F: 'static {
     fn emit<A>(&mut self, runtime: &mut Runtime, emitted: A) where F: FnMut(A, &mut B) {
         *self.runtime.emitted.borrow_mut() = true;
         {
-            let v = &self.runtime.value;
+            let mut v = self.runtime.value.borrow_mut();
             let gather = &mut *self.runtime.gather.borrow_mut();
-            gather(emitted, &mut v.borrow_mut());
+            gather(emitted, &mut v);
         }
         while let Some(c) = self.runtime.await_works.borrow_mut().pop() {
             runtime.decr_await_counter();
@@ -146,13 +146,13 @@ impl<B, F> Signal for MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
 
 impl<B, F> MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
     /// Creates a new mpmc signal.
-    pub fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
+    pub fn new<A>(default: B, gather: F) -> Self where A: 'static, F: FnMut(A, &mut B) {
         MpmcSignal(MpmcSignalRuntimeRef::new(default, gather))
     }
 
     /// Returns a process that emits the signal with value `emitted` when it is called.
     pub fn emit<A>(&self, emitted: A) -> Emit<A, B, F>
-        where Self: Sized, F: FnMut(A, &mut B)
+        where Self: Sized, A: 'static, F: FnMut(A, &mut B)
     {
         Emit { signal: self.clone(), emitted }
     }
