@@ -1,6 +1,3 @@
-use std::rc::Rc;
-use std::cell::RefCell;
-
 mod process_mut;
 pub use self::process_mut::{ProcessMut, While, LoopStatus};
 
@@ -20,6 +17,9 @@ pub use self::and_then::AndThen;
 pub use self::then::Then;
 pub use self::if_else::IfElse;
 pub use self::join::Join;
+
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use {Runtime, Continuation};
 

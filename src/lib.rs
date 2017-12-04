@@ -3,7 +3,10 @@ extern crate crossbeam;
 extern crate rand;
 extern crate ordermap;
 
-pub mod single_thread;
 pub mod parallel;
+pub mod continuation;
+pub mod runtime;
+pub mod signal;
 
-pub use single_thread::*;
+pub use continuation::Continuation;
+pub use runtime::Runtime;
