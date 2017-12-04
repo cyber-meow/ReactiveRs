@@ -8,5 +8,4 @@ pub mod continuation;
 pub mod runtime;
 pub mod signal;
 
-pub use continuation::Continuation;
-pub use runtime::Runtime;
+pub use continuation::{Continuation, ContinuationPl};

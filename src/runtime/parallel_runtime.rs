@@ -5,7 +5,8 @@ use crossbeam::sync::chase_lev;
 use rand::{Rng, XorShiftRng};
 use ordermap::OrderSet;
 
-use {Runtime, Continuation, ContinuationPl};
+use {Continuation, ContinuationPl};
+use runtime::Runtime;
 use signal::signal_runtime::SignalRuntimeRefBase;
 
 pub struct ParallelRuntime {
@@ -34,11 +35,6 @@ pub(crate) enum RuntimeStatus {
 }
 
 impl Runtime for ParallelRuntime {
-    /// Executes instants until all work is completed.
-    fn execute(&mut self) {
-        while self.instant() {};
-    }
-
     /// Executes a single instant to completion. Indicates if more work remains to be done.
     fn instant(&mut self) -> bool {
         #[cfg(feature = "debug")] {
@@ -48,14 +44,16 @@ impl Runtime for ParallelRuntime {
         self.consume_current_works(false);
         self.end_of_instant()
     }
-    
+}
+
+impl ParallelRuntime {
     /// Registers a continuation to execute on the current instant.
     fn on_current_instant(&mut self, c: Box<ContinuationPl<Self, ()>>) {
         self.worker.push(c);
     }
 
     /// Registers a continuation to execute at the next instant.
-    fn on_next_instant(&mut self, c: Box<ContinuationPl<Self, ()>>) {
+    pub(crate) fn on_next_instant(&mut self, c: Box<ContinuationPl<Self, ()>>) {
         self.next_instant_works.push(c);
     }
     
@@ -85,9 +83,7 @@ impl Runtime for ParallelRuntime {
     fn add_test_signal(&mut self, s: Box<SignalRuntimeRefBase<Self>>) {
         self.test_presence_signals.push(s);
     }
-}
 
-impl ParallelRuntime {
     /// When there are some works in `worker`, finishes them.
     fn consume_current_works(&mut self, is_eoi: bool) {
         loop {

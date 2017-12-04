@@ -1,8 +1,8 @@
-use runtime::{Runtime, SingleThreadRuntime};
+use runtime::{Runtime, SingleThreadRuntime, ParallelRuntime};
 
 /// A reactive continuation awaiting a value of type `V`. For the sake of simplicity,
 /// continuation must be valid on the static lifetime.
-pub trait Continuation<R, V>: 'static {
+pub trait Continuation<R, V>: 'static where R: Runtime {
     /// Calls the continuation.
     fn call(self, runtime: &mut R, value: V);
 
@@ -25,7 +25,7 @@ pub trait Continuation<R, V>: 'static {
     }
 }
 
-impl<R, V, F> Continuation<R, V> for F where F: FnOnce(&mut R, V) + 'static {
+impl<R, V, F> Continuation<R, V> for F where R: Runtime, F: FnOnce(&mut R, V) + 'static {
     fn call(self, runtime: &mut R, value: V) {
         self(runtime, value);
     }
@@ -39,7 +39,7 @@ impl<R, V, F> Continuation<R, V> for F where F: FnOnce(&mut R, V) + 'static {
 pub struct Map<C, F> { continuation: C, map: F }
 
 impl<R, C, F, V1, V2> Continuation<R, V1> for Map<C, F>
-    where C: Continuation<R, V2>, F: FnOnce(V1) -> V2 + 'static
+    where R: Runtime, C: Continuation<R, V2>, F: FnOnce(V1) -> V2 + 'static
 {
     fn call(self, runtime: &mut R, value: V1) {
         let v2 = (self.map)(value);
@@ -66,16 +66,31 @@ impl<C, V> Continuation<SingleThreadRuntime, V> for Pause<C>
     }
 }
 
-/*
-pub trait ContinuationPl<R, V>: Continuation<R, V> + Send + Sync {}
+/// Continuation which can be safely passed and shared between different threads.
+/// Used for the parallel implementation of the library.
+/// The `Sync` trait is only necessary when signals come into the scene.
+pub trait ContinuationPl<R, V>: Continuation<R, V> + Send + Sync where R: Runtime {}
 
 impl<R, V, F> ContinuationPl<R, V> for F
-    where F: FnOnce(&mut R, V) + Send + Sync + 'static {}
+    where R: Runtime, F: FnOnce(&mut R, V) + Send + Sync + 'static {}
 
 impl<R, C, F, V1, V2> ContinuationPl<R, V1> for Map<C, F>
-    where C: ContinuationPl<R, V2>,
+    where R: Runtime,
+          C: ContinuationPl<R, V2>,
           F: FnOnce(V1) -> V2 + Send + Sync + 'static,
           V2: Send + Sync + 'static {}
 
-impl<R, C, V> ContinuationPl<R, V> for Pause<C>
-    where R: Runtime, C: ContinuationPl<R, V>, V: Send + Sync + 'static {}*/
+impl<C, V> Continuation<ParallelRuntime, V> for Pause<C>
+    where C: ContinuationPl<ParallelRuntime, V>, V: Send + Sync + 'static
+{
+    fn call(self, runtime: &mut ParallelRuntime, value: V) {
+        runtime.on_next_instant(Box::new(self.0.map({|_| value})));
+    }
+    
+    fn call_box(self: Box<Self>, runtime: &mut ParallelRuntime, value: V) {
+        (*self).call(runtime, value);
+    }
+}
+
+impl<C, V> ContinuationPl<ParallelRuntime, V> for Pause<C>
+    where C: ContinuationPl<ParallelRuntime, V>, V: Send + Sync + 'static {}

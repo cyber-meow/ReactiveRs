@@ -1,6 +1,7 @@
 use Continuation;
+use runtime::Runtime;
 
-pub trait SignalRuntimeRefBase<R>: 'static {
+pub trait SignalRuntimeRefBase<R>: 'static where R: Runtime {
     /// Returns a bool to indicate if the signal was emitted or not on the current instant.
     fn is_emitted(&self) -> bool;
 
@@ -19,7 +20,7 @@ pub trait SignalRuntimeRefBase<R>: 'static {
     }
 }
 
-pub trait SignalRuntimeRef<R>: SignalRuntimeRefBase<R> {
+pub trait SignalRuntimeRef<R>: SignalRuntimeRefBase<R> where R: Runtime {
     /// Calls `c` at the first cycle where the signal is present.
     fn on_signal<C>(&mut self, runtime: &mut R, c: C) where C: Continuation<R, ()>;
     

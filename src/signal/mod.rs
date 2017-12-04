@@ -1,4 +1,5 @@
-use {Runtime, Continuation};
+use Continuation;
+use runtime::Runtime;
 
 pub mod signal_runtime;
 use self::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRef};
@@ -9,7 +10,7 @@ use self::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRef};
 /// implicitly so one can pass the signal directly.
 /// The user needs to call `clone` explicitly only in scenarios where the signal's
 /// ownership must be shared in different places, ex: closure.
-pub trait Signal<R>: Clone + 'static {
+pub trait Signal<R>: Clone + 'static where R: Runtime {
     /// The runtime reference type associated with the signal.
     type RuntimeRef: SignalRuntimeRef<R>;
 
