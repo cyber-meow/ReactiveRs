@@ -1,9 +1,12 @@
 use std::sync::{Arc, Mutex, Barrier, Condvar};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread;
 use crossbeam::sync::chase_lev;
 use rand::{Rng, XorShiftRng};
 use ordermap::OrderSet;
 
 use parallel::Continuation;
+use parallel::signal::signal_runtime::SignalRuntimeRefBase;
 
 pub struct Runtime {
     pub(crate) id: usize,
@@ -15,6 +18,10 @@ pub struct Runtime {
     pub(crate) working_pool: Arc<Mutex<OrderSet<usize>>>,
     pub(crate) whether_to_continue: Arc<(Mutex<RuntimeStatus>, Condvar)>,
     pub(crate) next_instant_works: Vec<Box<Continuation<()>>>,
+    pub(crate) emitted_signals: Vec<Box<SignalRuntimeRefBase>>,
+    pub(crate) await_counter: Arc<AtomicUsize>,
+    pub(crate) test_presence_signals: Vec<Box<SignalRuntimeRefBase>>,
+    #[cfg(feature = "debug")]
     pub(crate) instant: usize,
 }
 
@@ -32,13 +39,19 @@ impl Runtime {
 
     /// Executes a single instant to completion. Indicates if more work remains to be done.
     pub fn instant(&mut self) -> bool {
-        println!("Thread {}: instant {}.", self.id, self.instant);
+        #[cfg(feature = "debug")] {
+            println!("Thread {}: instant {}.", self.id, self.instant);
+        }
         loop {
             if let Some(work) = self.worker.try_pop() {
-                println!("Thread {}: work.", self.id);
+                if cfg!(feature = "debug") {
+                    println!("Thread {}: work.", self.id);
+                }
                 work.call_box(self, ());
             } else if let Some(work) = self.try_steal() {
-                println!("Thread {}: work.", self.id);
+                if cfg!(feature = "debug") {
+                    println!("Thread {}: work.", self.id);
+                }
                 work.call_box(self, ());
             } else {
                 break;
@@ -49,8 +62,12 @@ impl Runtime {
             let mut runtime_status = lock.lock().unwrap();
             *runtime_status = RuntimeStatus::Undetermined(0);
         }
-        println!("Thread {}: sleep.", self.id);
-        self.instant += 1;
+        if cfg!(feature = "debug") {
+            println!("Thread {}: sleep.", self.id);
+        }
+        #[cfg(feature = "debug")] {
+            self.instant += 1;
+        }
         self.barrier.wait();
         self.end_of_instant()
     }
@@ -61,7 +78,9 @@ impl Runtime {
         {
             let mut working_pool = self.working_pool.lock().unwrap();
             assert!(working_pool.remove(&self.id));
-            println!("Thread {}: try to steal.", self.id);
+            if cfg!(feature = "debug") {
+                println!("Thread {}: try to steal.", self.id);
+            }
         }
         loop {
             let working_pool = self.working_pool.lock().unwrap();
@@ -84,10 +103,15 @@ impl Runtime {
                 chase_lev::Steal::Data(work) => {
                     let mut working_pool = self.working_pool.lock().unwrap();
                     assert!(working_pool.insert(self.id));
-                    println!("Thread {}: steal success.", self.id);
+                    if cfg!(feature = "debug") {
+                        println!("Thread {}: steal success.", self.id);
+                    }
                     return Some(work);
                 },
-                _ => continue,
+                _ => {
+                    thread::yield_now();
+                    continue;
+                },
             };
         }
     }
@@ -96,6 +120,13 @@ impl Runtime {
     /// One important point is to know if there is still work to be done somewhere
     /// (knowing that the work can come from another runtime).
     fn end_of_instant(&mut self) -> bool {
+        while let Some(s) = self.test_presence_signals.pop() {
+            s.execute_present_works_box(self);
+        }
+        while let Some(s) = self.emitted_signals.pop() {
+            s.reset_box();
+        }
+        self.barrier.wait();
         if self.next_instant_works.is_empty() {
             let (ref lock, ref cvar) = *self.whether_to_continue;
             {
@@ -156,5 +187,26 @@ impl Runtime {
     /// Registers a continuation to execute at the next instant.
     pub(crate) fn on_next_instant(&mut self, c: Box<Continuation<()>>) {
         self.next_instant_works.push(c);
+    }
+    
+    /// Increases the await counter by 1 when some process await a signal to continue.
+    pub(crate) fn incr_await_counter(&mut self) {
+        self.await_counter.fetch_add(1, Ordering::SeqCst);
+    }
+
+    /// Decrease the await counter by 1 when some signal is emitted and
+    /// the corresponding process is thus executed.
+    pub(crate) fn decr_await_counter(&mut self) {
+        self.await_counter.fetch_sub(1, Ordering::SeqCst);
+    }
+
+    /// Registers a emitted signal for the current instant.
+    pub(crate) fn emit_signal(&mut self, s: Box<SignalRuntimeRefBase>) {
+        self.emitted_signals.push(s);
+    }
+    
+    /// Registers a signal for which we need to test its presence on the current instant.
+    pub(crate) fn add_test_signal(&mut self, s: Box<SignalRuntimeRefBase>) {
+        self.test_presence_signals.push(s);
     }
 }

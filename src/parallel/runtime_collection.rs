@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, Barrier, Condvar};
+use std::sync::atomic::AtomicUsize;
 use crossbeam;
 use crossbeam::sync::chase_lev;
 use rand::{weak_rng, Rng};
@@ -27,6 +28,7 @@ impl RuntimeCollection {
             stealers.push(stealer);
         }
         let barrier = Arc::new(Barrier::new(num_runtimes));
+        let await_counter = Arc::new(AtomicUsize::new(0));
         let working_pool = Arc::new(
             Mutex::new((0..num_runtimes).collect::<OrderSet<_>>()));
         let whether_to_continue = Arc::new(
@@ -44,6 +46,10 @@ impl RuntimeCollection {
                 working_pool: working_pool.clone(),
                 whether_to_continue: whether_to_continue.clone(),
                 next_instant_works: Vec::new(),
+                emitted_signals: Vec::new(),
+                await_counter: await_counter.clone(),
+                test_presence_signals: Vec::new(),
+                #[cfg(feature = "debug")]
                 instant: 0,
             })
         }

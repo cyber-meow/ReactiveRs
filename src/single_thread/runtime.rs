@@ -11,6 +11,7 @@ pub struct Runtime {
     emitted_signals: Vec<Box<SignalRuntimeRefBase>>,
     await_counter: usize,
     test_presence_signals: Vec<Box<SignalRuntimeRefBase>>,
+    #[cfg(feature = "debug")]
     instant: i64,
 }
 
@@ -24,6 +25,7 @@ impl Runtime {
             emitted_signals: Vec::new(),
             await_counter: 0,
             test_presence_signals: Vec::new(),
+            #[cfg(feature = "debug")]
             instant: 0,
         }
     }
@@ -35,8 +37,10 @@ impl Runtime {
 
     /// Executes a single instant to completion. Indicates if more work remains to be done.
     pub fn instant(&mut self) -> bool {
-        println!("instant {}", self.instant);
-        self.instant += 1;
+        #[cfg(feature = "debug")] {
+            println!("instant {}", self.instant);
+            self.instant += 1;
+        }
         while let Some(work) = Rc::get_mut(&mut self.current_instant_works).unwrap().pop() {
             work.call_box(self, ());
         }

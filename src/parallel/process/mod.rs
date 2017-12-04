@@ -24,9 +24,9 @@ use parallel::Continuation;
 use parallel::{Runtime, RuntimeCollection};
 
 /// A reactive process.
-pub trait Process: Send + 'static {
+pub trait Process: Send + Sync + 'static {
     /// The value created by the process.
-    type Value: Send;
+    type Value: Send + Sync;
 
     /// Executes the reactive process in the runtime, calls `next` with the resulting value.
     fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value>;
@@ -39,7 +39,7 @@ pub trait Process: Send + 'static {
     /// Applies a function to the value returned by the process before passing it to
     /// its continuation.
     fn map<F, V>(self, map: F) -> Map<Self, F>
-        where Self: Sized, F: FnOnce(Self::Value) -> V + Send + 'static, V: Send
+        where Self: Sized, F: FnOnce(Self::Value) -> V + Send + Sync + 'static
     {
         Map { process: self, map }
     }
@@ -51,7 +51,7 @@ pub trait Process: Send + 'static {
     
     /// Chains another process after the exectution of one process (like the `bind` for a monad).
     fn and_then<F, P>(self, chain: F) -> AndThen<Self, F>
-        where Self: Sized, F: FnOnce(Self::Value) -> P + Send + 'static, P: Process
+        where Self: Sized, F: FnOnce(Self::Value) -> P + Send + Sync + 'static, P: Process
     {
         AndThen { process: self, chain }
     }
@@ -71,7 +71,7 @@ pub trait Process: Send + 'static {
         where Self: Process<Value=bool> + Sized,
               P1: Process<Value=V>,
               P2: Process<Value=V>,
-              V: Send,
+              V: Send + Sync,
     {
         IfElse {
             process: self,

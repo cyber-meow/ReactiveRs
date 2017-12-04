@@ -9,6 +9,9 @@ crossbeam = "0.3.0"
 rand = "0.3"
 ordermap = "0.3.2"
 
+[features]
+debug = []
+
 [[bin]]
 name = "process42"
 path = "src/single_thread/bin/basic/process42.rs"
@@ -44,3 +47,7 @@ path = "src/parallel/bin/process42.rs"
 [[bin]]
 name = "p_while_join_test"
 path = "src/parallel/bin/while_join_test.rs"
+
+[[bin]]
+name = "p_pure_signal_test"
+path = "src/parallel/bin/pure_signal_test.rs"

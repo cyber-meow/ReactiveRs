@@ -9,7 +9,7 @@ pub struct IfElse<P, P1, P2> {
 }
 
 impl<P, P1, P2, V> Process for IfElse<P, P1, P2>
-    where P: Process<Value=bool>, P1: Process<Value=V>, P2: Process<Value=V>, V: Send
+    where P: Process<Value=bool>, P1: Process<Value=V>, P2: Process<Value=V>, V: Send + Sync
 {
     type Value = V;
 
@@ -31,7 +31,7 @@ impl<P, P1, P2, V> ProcessMut for IfElse<P, P1, P2>
     where P: ProcessMut<Value=bool>,
           P1: ProcessMut<Value=V>, 
           P2: ProcessMut<Value=V>,
-          V: Send,
+          V: Send + Sync,
 {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
