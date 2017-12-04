@@ -82,15 +82,3 @@ pub trait Process: 'static {
         Join(self, proc2)
     }
 }
-
-/// Execute a process in a newly created runtime and return its value.
-pub fn execute_process<P>(p: P) -> P::Value where P: Process {
-    let mut runtime = Runtime::new();
-    let res: Rc<RefCell<Option<P::Value>>> = Rc::new(RefCell::new(None));
-    let res2 = res.clone();
-    let c = move |_: &mut Runtime, v| *res2.borrow_mut() = Some(v);
-    runtime.on_current_instant(Box::new(|r: &mut Runtime, _| p.call(r, c)));
-    runtime.execute();
-    let mut res = res.borrow_mut();
-    res.take().unwrap()
-}

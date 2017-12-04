@@ -2,8 +2,8 @@ mod single_thread_runtime;
 pub use self::single_thread_runtime::SingleThreadRuntime;
 mod parallel_runtime;
 pub use self::parallel_runtime::ParallelRuntime;
-/*mod parallel_runtime_collection;
-pub use self::parallel_runtime_collection::ParallelRuntimeCollection;*/
+mod parallel_runtime_collection;
+pub use self::parallel_runtime_collection::ParallelRuntimeCollection;
 
 pub trait Runtime {
     /// Executes instants until all work is completed.

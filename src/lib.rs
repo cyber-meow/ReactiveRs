@@ -4,8 +4,9 @@ extern crate rand;
 extern crate ordermap;
 
 pub mod parallel;
-pub mod continuation;
 pub mod runtime;
+pub mod continuation;
+pub mod process;
 pub mod signal;
 
-pub use continuation::{Continuation, ContinuationPl};
+pub use process::Process;

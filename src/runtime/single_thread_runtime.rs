@@ -1,14 +1,14 @@
 use std::rc::Rc;
 
-use Continuation;
 use runtime::Runtime;
+use continuation::ContinuationSt;
 use signal::signal_runtime::SignalRuntimeRefBase;
 
 /// Runtime for executing reactive continuations.
 pub struct SingleThreadRuntime {
-    current_instant_works: Rc<Vec<Box<Continuation<SingleThreadRuntime, ()>>>>,
-    next_instant_works: Rc<Vec<Box<Continuation<SingleThreadRuntime, ()>>>>,
-    end_of_instant_works: Vec<Box<Continuation<SingleThreadRuntime, ()>>>,
+    current_instant_works: Rc<Vec<Box<ContinuationSt<()>>>>,
+    next_instant_works: Rc<Vec<Box<ContinuationSt<()>>>>,
+    end_of_instant_works: Vec<Box<ContinuationSt<()>>>,
     emitted_signals: Vec<Box<SignalRuntimeRefBase<SingleThreadRuntime>>>,
     await_counter: usize,
     test_presence_signals: Vec<Box<SignalRuntimeRefBase<SingleThreadRuntime>>>,
@@ -61,18 +61,18 @@ impl SingleThreadRuntime {
     }
     
     /// Registers a continuation to execute on the current instant.
-    pub(crate) fn on_current_instant(&mut self, c: Box<Continuation<Self, ()>>) {
+    pub(crate) fn on_current_instant(&mut self, c: Box<ContinuationSt<()>>) {
         Rc::get_mut(&mut self.current_instant_works).unwrap().push(c);
     }
 
     /// Registers a continuation to execute at the next instant.
-    pub(crate) fn on_next_instant(&mut self, c: Box<Continuation<Self, ()>>) {
+    pub(crate) fn on_next_instant(&mut self, c: Box<ContinuationSt<()>>) {
         Rc::get_mut(&mut self.next_instant_works).unwrap().push(c);
     }
 
     /// Registers a continuation to execute at the end of the instant. Runtime calls for `c`
     /// behave as if they where executed during the next instant.
-    pub(crate) fn on_end_of_instant(&mut self, c: Box<Continuation<Self, ()>>) {
+    pub(crate) fn on_end_of_instant(&mut self, c: Box<ContinuationSt<()>>) {
         self.end_of_instant_works.push(c);
     }
 

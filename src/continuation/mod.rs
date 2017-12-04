@@ -1,3 +1,8 @@
+mod map;
+pub use self::map::Map;
+mod pause;
+pub use self::pause::Pause;
+
 use runtime::{Runtime, SingleThreadRuntime, ParallelRuntime};
 
 /// A reactive continuation awaiting a value of type `V`. For the sake of simplicity,
@@ -35,62 +40,14 @@ impl<R, V, F> Continuation<R, V> for F where R: Runtime, F: FnOnce(&mut R, V) + 
     }
 }
 
-/// A continuation that applies a function before calling another continuation.
-pub struct Map<C, F> { continuation: C, map: F }
+/// Continuation to be run in a single thread.
+pub trait ContinuationSt<V>: Continuation<SingleThreadRuntime, V> {}
 
-impl<R, C, F, V1, V2> Continuation<R, V1> for Map<C, F>
-    where R: Runtime, C: Continuation<R, V2>, F: FnOnce(V1) -> V2 + 'static
-{
-    fn call(self, runtime: &mut R, value: V1) {
-        let v2 = (self.map)(value);
-        self.continuation.call(runtime, v2);
-    }
-
-    fn call_box(self: Box<Self>, runtime: &mut R, value: V1) {
-        (*self).call(runtime, value);
-    }
-}
-
-/// A continuation that calls another continuation in the next instant.
-pub struct Pause<C>(C);
-
-impl<C, V> Continuation<SingleThreadRuntime, V> for Pause<C>
-    where C: Continuation<SingleThreadRuntime, V>, V: 'static
-{
-    fn call(self, runtime: &mut SingleThreadRuntime, value: V) {
-        runtime.on_next_instant(Box::new(self.0.map({|_| value})));
-    }
-    
-    fn call_box(self: Box<Self>, runtime: &mut SingleThreadRuntime, value: V) {
-        (*self).call(runtime, value);
-    }
-}
+impl<C, V> ContinuationSt<V> for C where C: Continuation<SingleThreadRuntime, V> {}
 
 /// Continuation which can be safely passed and shared between different threads.
 /// Used for the parallel implementation of the library.
 /// The `Sync` trait is only necessary when signals come into the scene.
-pub trait ContinuationPl<R, V>: Continuation<R, V> + Send + Sync where R: Runtime {}
+pub trait ContinuationPl<V>: Continuation<ParallelRuntime, V> + Send + Sync {}
 
-impl<R, V, F> ContinuationPl<R, V> for F
-    where R: Runtime, F: FnOnce(&mut R, V) + Send + Sync + 'static {}
-
-impl<R, C, F, V1, V2> ContinuationPl<R, V1> for Map<C, F>
-    where R: Runtime,
-          C: ContinuationPl<R, V2>,
-          F: FnOnce(V1) -> V2 + Send + Sync + 'static,
-          V2: Send + Sync + 'static {}
-
-impl<C, V> Continuation<ParallelRuntime, V> for Pause<C>
-    where C: ContinuationPl<ParallelRuntime, V>, V: Send + Sync + 'static
-{
-    fn call(self, runtime: &mut ParallelRuntime, value: V) {
-        runtime.on_next_instant(Box::new(self.0.map({|_| value})));
-    }
-    
-    fn call_box(self: Box<Self>, runtime: &mut ParallelRuntime, value: V) {
-        (*self).call(runtime, value);
-    }
-}
-
-impl<C, V> ContinuationPl<ParallelRuntime, V> for Pause<C>
-    where C: ContinuationPl<ParallelRuntime, V>, V: Send + Sync + 'static {}
+impl<C, V> ContinuationPl<V> for C where C: Continuation<ParallelRuntime, V> + Send + Sync {}

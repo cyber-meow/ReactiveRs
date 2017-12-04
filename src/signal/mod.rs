@@ -1,5 +1,5 @@
-use Continuation;
 use runtime::Runtime;
+use continuation::Continuation;
 
 pub mod signal_runtime;
 use self::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRef};

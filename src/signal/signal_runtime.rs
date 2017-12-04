@@ -1,5 +1,5 @@
-use Continuation;
-use runtime::Runtime;
+use runtime::{Runtime, ParallelRuntime};
+use continuation::Continuation;
 
 pub trait SignalRuntimeRefBase<R>: 'static where R: Runtime {
     /// Returns a bool to indicate if the signal was emitted or not on the current instant.
@@ -28,3 +28,5 @@ pub trait SignalRuntimeRef<R>: SignalRuntimeRefBase<R> where R: Runtime {
     fn on_signal_present<C>(&mut self, runtime: &mut R, c: C)
         where C: Continuation<R, ()>;
 }
+
+pub trait SignalRuntimeRefBasePl: SignalRuntimeRefBase<ParallelRuntime> + Send{}

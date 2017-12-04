@@ -6,8 +6,9 @@ use crossbeam::sync::chase_lev;
 use rand::{weak_rng, Rng};
 use ordermap::OrderSet;
 
-use {Runtime, Continuation};
+use runtime::Runtime;
 use runtime::parallel_runtime::{ParallelRuntime, RuntimeStatus};
+use continuation::ContinuationPl;
 
 pub struct ParallelRuntimeCollection {
     runtimes: Vec<ParallelRuntime>,
@@ -67,7 +68,7 @@ impl ParallelRuntimeCollection {
         });
     }
 
-    pub fn register_work(&mut self, c: Box<Continuation<ParallelRuntime, ()>>) {
+    pub fn register_work(&mut self, c: Box<ContinuationPl<()>>) {
         let runtime = weak_rng().choose_mut(&mut self.runtimes).unwrap();
         runtime.on_current_instant(c);
     }
