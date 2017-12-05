@@ -2,6 +2,7 @@ pub mod continuation;
 pub mod runtime;
 pub mod runtime_collection;
 pub mod process;
+pub mod signal;
 
 pub use self::continuation::Continuation;
 pub use self::runtime::Runtime;

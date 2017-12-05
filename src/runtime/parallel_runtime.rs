@@ -5,24 +5,25 @@ use crossbeam::sync::chase_lev;
 use rand::{Rng, XorShiftRng};
 use ordermap::OrderSet;
 
-use parallel::Continuation;
-use parallel::signal::signal_runtime::SignalRuntimeRefBase;
+use runtime::Runtime;
+use continuation::ContinuationPl;
+use signal::signal_runtime::SignalRuntimeRefBasePl;
 
-pub struct Runtime {
+pub struct ParallelRuntime {
     pub(crate) id: usize,
     pub(crate) num_threads_total: usize,
-    pub(crate) worker: chase_lev::Worker<Box<Continuation<()>>>,
-    pub(crate) stealers: Vec<chase_lev::Stealer<Box<Continuation<()>>>>,
+    pub(crate) worker: chase_lev::Worker<Box<ContinuationPl<()>>>,
+    pub(crate) stealers: Vec<chase_lev::Stealer<Box<ContinuationPl<()>>>>,
     pub(crate) barrier: Arc<Barrier>,
     pub(crate) rng: XorShiftRng,
     pub(crate) working_pool: Arc<Mutex<OrderSet<usize>>>,
     pub(crate) whether_to_continue: Arc<(Mutex<RuntimeStatus>, Condvar)>,
-    pub(crate) next_instant_works: Vec<Box<Continuation<()>>>,
-    pub(crate) end_of_instant_works: Vec<Box<Continuation<()>>>,
+    pub(crate) next_instant_works: Vec<Box<ContinuationPl<()>>>,
+    pub(crate) end_of_instant_works: Vec<Box<ContinuationPl<()>>>,
     pub(crate) eoi_working_pool: Arc<Mutex<OrderSet<usize>>>,
-    pub(crate) emitted_signals: Vec<Box<SignalRuntimeRefBase>>,
+    pub(crate) emitted_signals: Vec<Box<SignalRuntimeRefBasePl>>,
     pub(crate) await_counter: Arc<AtomicUsize>,
-    pub(crate) test_presence_signals: Vec<Box<SignalRuntimeRefBase>>,
+    pub(crate) test_presence_signals: Vec<Box<SignalRuntimeRefBasePl>>,
     #[cfg(feature = "debug")]
     pub(crate) instant: usize,
 }
@@ -33,20 +34,54 @@ pub(crate) enum RuntimeStatus {
     Finished,
 }
 
-impl Runtime {
-    /// Executes instants until all work is completed.
-    pub fn execute(&mut self) {
-        while self.instant() {};
-    }
-
+impl Runtime for ParallelRuntime {
     /// Executes a single instant to completion. Indicates if more work remains to be done.
-    pub fn instant(&mut self) -> bool {
+    fn instant(&mut self) -> bool {
         #[cfg(feature = "debug")] {
             println!("Thread {}: instant {}.", self.id, self.instant);
             self.instant += 1;
         }
         self.consume_current_works(false);
         self.end_of_instant()
+    }
+}
+
+impl ParallelRuntime {
+    /// Registers a continuation to execute on the current instant.
+    pub(crate) fn on_current_instant(&mut self, c: Box<ContinuationPl<()>>) {
+        self.worker.push(c);
+    }
+
+    /// Registers a continuation to execute at the next instant.
+    pub(crate) fn on_next_instant(&mut self, c: Box<ContinuationPl<()>>) {
+        self.next_instant_works.push(c);
+    }
+    
+    /// Registers a continuation to execute at the end of the instant. Runtime calls for `c`
+    /// behave as if they where executed during the next instant.
+    fn on_end_of_instant(&mut self, c: Box<ContinuationPl<()>>) {
+        self.end_of_instant_works.push(c);
+    }
+    
+    /// Increases the await counter by 1 when some process await a signal to continue.
+    fn incr_await_counter(&mut self) {
+        self.await_counter.fetch_add(1, Ordering::SeqCst);
+    }
+
+    /// Decrease the await counter by 1 when some signal is emitted and
+    /// the corresponding process is thus executed.
+    fn decr_await_counter(&mut self) {
+        self.await_counter.fetch_sub(1, Ordering::SeqCst);
+    }
+
+    /// Registers a emitted signal for the current instant.
+    fn emit_signal(&mut self, s: Box<SignalRuntimeRefBasePl>) {
+        self.emitted_signals.push(s);
+    }
+    
+    /// Registers a signal for which we need to test its presence on the current instant.
+    fn add_test_signal(&mut self, s: Box<SignalRuntimeRefBasePl>) {
+        self.test_presence_signals.push(s);
     }
 
     /// When there are some works in `worker`, finishes them.
@@ -79,7 +114,7 @@ impl Runtime {
 
     /// Tries to steal work from other workers.
     /// Returns `None` only when there is no longer anyone who is working.
-    fn try_steal(&mut self, is_eoi: bool) -> Option<Box<Continuation<()>>> {
+    fn try_steal(&mut self, is_eoi: bool) -> Option<Box<ContinuationPl<()>>> {
         let wp = if is_eoi { &self.eoi_working_pool } else { &self.working_pool };
         {
             let mut working_pool = wp.lock().unwrap();
@@ -196,42 +231,5 @@ impl Runtime {
             }
             return true;
         }
-    }
-    
-    /// Registers a continuation to execute on the current instant.
-    pub(crate) fn on_current_instant(&mut self, c: Box<Continuation<()>>) {
-        self.worker.push(c);
-    }
-
-    /// Registers a continuation to execute at the next instant.
-    pub(crate) fn on_next_instant(&mut self, c: Box<Continuation<()>>) {
-        self.next_instant_works.push(c);
-    }
-    
-    /// Registers a continuation to execute at the end of the instant. Runtime calls for `c`
-    /// behave as if they where executed during the next instant.
-    pub(crate) fn on_end_of_instant(&mut self, c: Box<Continuation<()>>) {
-        self.end_of_instant_works.push(c);
-    }
-    
-    /// Increases the await counter by 1 when some process await a signal to continue.
-    pub(crate) fn incr_await_counter(&mut self) {
-        self.await_counter.fetch_add(1, Ordering::SeqCst);
-    }
-
-    /// Decrease the await counter by 1 when some signal is emitted and
-    /// the corresponding process is thus executed.
-    pub(crate) fn decr_await_counter(&mut self) {
-        self.await_counter.fetch_sub(1, Ordering::SeqCst);
-    }
-
-    /// Registers a emitted signal for the current instant.
-    pub(crate) fn emit_signal(&mut self, s: Box<SignalRuntimeRefBase>) {
-        self.emitted_signals.push(s);
-    }
-    
-    /// Registers a signal for which we need to test its presence on the current instant.
-    pub(crate) fn add_test_signal(&mut self, s: Box<SignalRuntimeRefBase>) {
-        self.test_presence_signals.push(s);
     }
 }

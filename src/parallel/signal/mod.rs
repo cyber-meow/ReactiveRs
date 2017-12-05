@@ -1,13 +1,13 @@
+use parallel::{Runtime, Continuation};
+use parallel::process::{Process, ProcessMut};
+
 pub mod signal_runtime;
 use self::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRef};
 
 mod pure_signal;
-mod mpmc_signal;
 pub use self::pure_signal::PureSignal;
+mod mpmc_signal;
 pub use self::mpmc_signal::MpmcSignal;
-
-use {Runtime, Continuation};
-use process::{Process, ProcessMut};
 
 /// A reactive signal.  
 /// The signal implement the trait `Clone` to assure that it can be used multiple times
@@ -15,7 +15,7 @@ use process::{Process, ProcessMut};
 /// implicitly so one can pass the signal directly.
 /// The user needs to call `clone` explicitly only in scenarios where the signal's
 /// ownership must be shared in different places, ex: closure.
-pub trait Signal: Clone + 'static {
+pub trait Signal: Clone + Send + Sync + 'static {
     /// The runtime reference type associated with the signal.
     type RuntimeRef: SignalRuntimeRef;
 
@@ -31,7 +31,7 @@ pub trait Signal: Clone + 'static {
     /// Test the status of a signal `s`. If the signal is present, the process `p1`
     /// is executed instantaneously, other wise `p2` is executed at the following instant.
     fn present_else<P1, P2, V>(&self, p1: P1, p2: P2) -> PresentElse<Self, P1, P2>
-        where Self: Sized, P1: Process<Value=V>, P2: Process<Value=V>
+        where Self: Sized, P1: Process<Value=V>, P2: Process<Value=V>, V: Send + Sync
     {
         PresentElse {
             signal: self.clone(),
@@ -72,7 +72,7 @@ pub struct PresentElse<S, P1, P2> {
 }
 
 impl<S, P1, P2, V> Process for PresentElse<S, P1, P2>
-    where S: Signal, P1: Process<Value=V>, P2: Process<Value=V>
+    where S: Signal, P1: Process<Value=V>, P2: Process<Value=V>, V: Send + Sync
 {
     type Value = V;
     
@@ -80,7 +80,9 @@ impl<S, P1, P2, V> Process for PresentElse<S, P1, P2>
         let mut signal_runtime = self.signal.runtime();
         let c = |r: &mut Runtime, ()| {
             if self.signal.runtime().is_emitted() {
-                self.present_proc.call(r, next);
+                let present_continuation =
+                    move |r: &mut Runtime, ()| { self.present_proc.call(r, next) };
+                r.on_current_instant(Box::new(present_continuation));
             } else {
                 let else_continuation =
                     move |r: &mut Runtime, ()| { self.else_proc.call(r, next) };
@@ -93,7 +95,7 @@ impl<S, P1, P2, V> Process for PresentElse<S, P1, P2>
 }
 
 impl <S, P1, P2, V> ProcessMut for PresentElse<S, P1, P2>
-    where S: Signal, P1: ProcessMut<Value=V>, P2: ProcessMut<Value=V>
+    where S: Signal, P1: ProcessMut<Value=V>, P2: ProcessMut<Value=V>, V: Send + Sync
 {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
@@ -103,8 +105,11 @@ impl <S, P1, P2, V> ProcessMut for PresentElse<S, P1, P2>
             let signal = self.signal;
             let (else_proc, present_proc) = (self.else_proc, self.present_proc);
             if signal.runtime().is_emitted() {
-                present_proc.call_mut(
-                    r, next.map(move |(p, v)| (signal.present_else(p, else_proc), v)))
+                let present_continuation = move |r: &mut Runtime, ()| {
+                    present_proc.call_mut(
+                        r, next.map(move |(p, v)| (signal.present_else(p, else_proc), v)))
+                };
+                r.on_current_instant(Box::new(present_continuation));
             } else {
                 let else_continuation = |r: &mut Runtime, ()| {
                     else_proc.call_mut(r, next.map(
@@ -115,5 +120,5 @@ impl <S, P1, P2, V> ProcessMut for PresentElse<S, P1, P2>
         };
         signal_runtime.on_signal_present(runtime, c);
         runtime.add_test_signal(Box::new(signal_runtime));
-    }   
+    }
 }

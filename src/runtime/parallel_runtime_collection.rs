@@ -6,15 +6,15 @@ use crossbeam::sync::chase_lev;
 use rand::{weak_rng, Rng};
 use ordermap::OrderSet;
 
-use parallel::Continuation;
-use parallel::Runtime;
-use parallel::runtime::RuntimeStatus;
+use runtime::Runtime;
+use runtime::parallel_runtime::{ParallelRuntime, RuntimeStatus};
+use continuation::ContinuationPl;
 
-pub struct RuntimeCollection {
-    runtimes: Vec<Runtime>,
+pub struct ParallelRuntimeCollection {
+    runtimes: Vec<ParallelRuntime>,
 }
 
-impl RuntimeCollection {
+impl ParallelRuntimeCollection {
     pub fn new(num_runtimes: usize) -> Self {
         if num_runtimes == 0 {
             panic!("There should be at least one runtime!");
@@ -38,7 +38,7 @@ impl RuntimeCollection {
         for i in 0..num_runtimes {
             let worker = workers.pop_front().unwrap();
             let stealers: Vec<_> = stealers.iter().map(|stealer| stealer.clone()).collect();
-            runtimes.push(Runtime {
+            runtimes.push(ParallelRuntime {
                 id: i,
                 num_threads_total: num_runtimes,
                 worker,
@@ -57,7 +57,7 @@ impl RuntimeCollection {
                 instant: 0,
             })
         }
-        RuntimeCollection { runtimes }
+        ParallelRuntimeCollection { runtimes }
     }
 
     pub fn execute(&mut self) {
@@ -68,7 +68,7 @@ impl RuntimeCollection {
         });
     }
 
-    pub fn register_work(&mut self, c: Box<Continuation<()>>) {
+    pub fn register_work(&mut self, c: Box<ContinuationPl<()>>) {
         let runtime = weak_rng().choose_mut(&mut self.runtimes).unwrap();
         runtime.on_current_instant(c);
     }

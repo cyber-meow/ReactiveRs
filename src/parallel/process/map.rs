@@ -5,7 +5,7 @@ use parallel::process::{Process, ProcessMut};
 pub struct Map<P, F> { pub(crate) process: P, pub(crate) map: F }
 
 impl<P, F, V> Process for Map<P, F> 
-    where P: Process, F: FnOnce(P::Value) -> V + Send + 'static, V: Send
+    where P: Process, F: FnOnce(P::Value) -> V + Send + Sync + 'static, V: Send + Sync
 {
     type Value = V;
 
@@ -15,7 +15,7 @@ impl<P, F, V> Process for Map<P, F>
 }
 
 impl<P, F, V> ProcessMut for Map<P,F>
-    where P: ProcessMut, F: FnMut(P::Value) -> V + Send + 'static, V: Send
+    where P: ProcessMut, F: FnMut(P::Value) -> V + Send + Sync + 'static, V: Send + Sync
 {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>

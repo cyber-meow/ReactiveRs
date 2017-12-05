@@ -2,7 +2,8 @@ use parallel::Runtime;
 
 /// A reactive continuation awaiting a value of type `V`. For the sake of simplicity,
 /// continuation must be valid on the static lifetime.
-pub trait Continuation<V>: Send + 'static {
+/// The `Sync` trait is only necessary when signals come into the scene.
+pub trait Continuation<V>: Send + Sync + 'static {
     /// Calls the continuation.
     fn call(self, runtime: &mut Runtime, value: V);
 
@@ -27,7 +28,7 @@ pub trait Continuation<V>: Send + 'static {
     }
 }
 
-impl<V, F> Continuation<V> for F where F: FnOnce(&mut Runtime, V) + Send + 'static {
+impl<V, F> Continuation<V> for F where F: FnOnce(&mut Runtime, V) + Send + Sync + 'static {
     fn call(self, runtime: &mut Runtime, value: V)  {
         self(runtime, value);
     }
@@ -41,7 +42,7 @@ impl<V, F> Continuation<V> for F where F: FnOnce(&mut Runtime, V) + Send + 'stat
 pub struct Map<C, F> { continuation: C, map: F }
 
 impl<C, F, V1, V2> Continuation<V1> for Map<C, F>
-    where C: Continuation<V2>, F: FnOnce(V1) -> V2 + Send + 'static, V2: Send
+    where C: Continuation<V2>, F: FnOnce(V1) -> V2 + Send + Sync + 'static
 {
     fn call(self, runtime: &mut Runtime, value: V1) {
         let v2 = (self.map)(value);
@@ -56,7 +57,7 @@ impl<C, F, V1, V2> Continuation<V1> for Map<C, F>
 /// A continuation that calls another continuation in the next instant.
 pub struct Pause<C>(C);
 
-impl<C, V> Continuation<V> for Pause<C> where C: Continuation<V>, V: Send + 'static {
+impl<C, V> Continuation<V> for Pause<C> where C: Continuation<V>, V: Send + Sync + 'static {
     fn call(self, runtime: &mut Runtime, value: V) {
         runtime.on_next_instant(Box::new(self.0.map({|_| value})));
     }

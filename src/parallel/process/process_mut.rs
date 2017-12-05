@@ -10,7 +10,7 @@ pub trait ProcessMut: Process {
 
     /// A classic loop that continues or stops accroding to the returned value of the process.
     fn while_proc<V>(self) -> While<Self>
-        where Self: ProcessMut<Value=LoopStatus<V>> + Sized, V: Send
+        where Self: ProcessMut<Value=LoopStatus<V>> + Sized, V: Send + Sync
     {
         While(self)
     }
@@ -28,7 +28,7 @@ pub enum LoopStatus<V> { Continue, Exit(V) }
 /// in which case the created process exits and returns `v`.
 pub struct While<P>(P);
 
-impl<P, V> Process for While<P> where P: ProcessMut<Value=LoopStatus<V>>, V: Send {
+impl<P, V> Process for While<P> where P: ProcessMut<Value=LoopStatus<V>>, V: Send + Sync {
     type Value = V;
 
     fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
@@ -36,7 +36,7 @@ impl<P, V> Process for While<P> where P: ProcessMut<Value=LoopStatus<V>>, V: Sen
     }
 }
 
-impl<P, V> ProcessMut for While<P> where P: ProcessMut<Value=LoopStatus<V>>, V: Send {
+impl<P, V> ProcessMut for While<P> where P: ProcessMut<Value=LoopStatus<V>>, V: Send + Sync {
     fn call_mut<C>(self, runtime: &mut Runtime, next: C)
         where Self: Sized, C: Continuation<(Self, Self::Value)>
     {
@@ -49,7 +49,7 @@ impl<P, V> ProcessMut for While<P> where P: ProcessMut<Value=LoopStatus<V>>, V: 
 pub struct WhileContinuation<C>(C);
 
 impl<P, C, V> Continuation<(P, P::Value)> for WhileContinuation<C>
-    where P: ProcessMut<Value=LoopStatus<V>>, C: Continuation<(While<P>, V)>, V: Send
+    where P: ProcessMut<Value=LoopStatus<V>>, C: Continuation<(While<P>, V)>, V: Send + Sync
 {
     fn call(self, runtime: &mut Runtime, (process, loop_status): (P, LoopStatus<V>)) {
         match loop_status {
