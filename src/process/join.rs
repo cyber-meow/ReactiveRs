@@ -1,61 +1,55 @@
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::cell::RefCell;
 use either::{Either, Left, Right};
 
-use parallel::{Runtime, Continuation};
-use parallel::process::{Process, ProcessMut};
+use runtime::SingleThreadRuntime;
+use continuation::ContinuationSt;
+use process::{Process, ProcessSt, ProcessMutSt};
 
 /// Parallel composition of two processes.
 pub struct Join<P1, P2>(pub(crate) P1, pub(crate) P2);
 
 impl<P1, P2> Process for Join<P1, P2> where P1: Process, P2: Process {
     type Value = (P1::Value, P2::Value);
-    
-    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
-        let joint_point = Arc::new(Mutex::new(JoinPoint::new(next)));
+}
+
+// Implements the traits for the single thread version of the library.
+
+impl<P1, P2> ProcessSt for Join<P1, P2> where P1: ProcessSt, P2: ProcessSt {
+    fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
+        where C: ContinuationSt<Self::Value>
+    {
+        let joint_point = Rc::new(RefCell::new(JoinPoint::new(next)));
         let joint_point2 = joint_point.clone();
-        let (proc1, proc2) = (self.0, self.1);
-        let c1 = |r: &mut Runtime, ()| {
-            proc1.call(
-                r,
-                move |r: &mut Runtime, v|
-                    joint_point.lock().unwrap().call_ref(r, Left(v)));
-        };
-        let c2 = |r: &mut Runtime, ()| {
-            proc2.call(
-                r,
-                move |r: &mut Runtime, v|
-                    joint_point2.lock().unwrap().call_ref(r, Right(v)));
-        };
-        runtime.on_current_instant(Box::new(c1));
-        runtime.on_current_instant(Box::new(c2));
+        self.0.call(
+            runtime,
+            move |r: &mut SingleThreadRuntime, v|
+                joint_point.borrow_mut().call_ref(r, Left(v)));
+        self.1.call(
+            runtime,
+            move |r: &mut SingleThreadRuntime, v|
+                joint_point2.borrow_mut().call_ref(r, Right(v)));
     }
 }
 
-impl<P1, P2> ProcessMut for Join<P1, P2> where P1: ProcessMut, P2: ProcessMut {
-    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
-        where Self: Sized, C: Continuation<(Self, Self::Value)>
+impl<P1, P2> ProcessMutSt for Join<P1, P2> where P1: ProcessMutSt, P2: ProcessMutSt {
+    fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
+        where Self: Sized, C: ContinuationSt<(Self, Self::Value)>
     {
         let mut_next = next.map(
             |((p1, v1), (p2, v2)): ((P1, P1::Value), (P2, P2::Value))|
             (p1.join(p2), (v1, v2))
         );
-        let joint_point = Arc::new(Mutex::new(JoinPoint::new(mut_next)));
+        let joint_point = Rc::new(RefCell::new(JoinPoint::new(mut_next)));
         let joint_point2 = joint_point.clone();
-        let (proc1, proc2) = (self.0, self.1);
-        let c1 = |r: &mut Runtime, ()| {
-            proc1.call_mut(
-                r,
-                move |r: &mut Runtime, p_v|
-                    joint_point.lock().unwrap().call_ref(r, Left(p_v)));
-        };
-        let c2 = |r: &mut Runtime, ()| {
-            proc2.call_mut(
-                r,
-                move |r: &mut Runtime, p_v|
-                    joint_point2.lock().unwrap().call_ref(r, Right(p_v)));
-        };
-        runtime.on_current_instant(Box::new(c1));
-        runtime.on_current_instant(Box::new(c2));
+        self.0.call_mut(
+            runtime,
+            move |r: &mut SingleThreadRuntime, p_v|
+                joint_point.borrow_mut().call_ref(r, Left(p_v)));
+        self.1.call_mut(
+            runtime,
+            move |r: &mut SingleThreadRuntime, p_v|
+                joint_point2.borrow_mut().call_ref(r, Right(p_v)));
     }
 }
 
@@ -67,7 +61,7 @@ struct JoinPoint<V1, V2, C> {
 }
 
 impl<V1, V2, C> JoinPoint<V1, V2, C> {
-    fn new(continuation: C) -> Self where C: Continuation<(V1, V2)> {
+    fn new(continuation: C) -> Self where C: ContinuationSt<(V1, V2)> {
         JoinPoint {
             counter: 0,
             values: (None, None),
@@ -75,8 +69,8 @@ impl<V1, V2, C> JoinPoint<V1, V2, C> {
         }
     }
     
-    fn call_ref(&mut self, runtime: &mut Runtime, value: Either<V1, V2>) 
-        where V1: 'static, V2: 'static, C: Continuation<(V1, V2)>   
+    fn call_ref(&mut self, runtime: &mut SingleThreadRuntime, value: Either<V1, V2>) 
+        where V1: 'static, V2: 'static, C: ContinuationSt<(V1, V2)>   
     {
         match value {
             Left(value1) => {

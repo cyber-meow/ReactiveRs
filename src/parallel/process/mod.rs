@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 mod process_mut;
 pub use self::process_mut::{ProcessMut, While, LoopStatus};
 
@@ -19,6 +17,8 @@ pub use self::and_then::AndThen;
 pub use self::then::Then;
 pub use self::if_else::IfElse;
 pub use self::join::Join;
+
+use std::sync::{Arc, Mutex};
 
 use parallel::Continuation;
 use parallel::{Runtime, RuntimeCollection};

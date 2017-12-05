@@ -15,6 +15,8 @@ impl<V> Process for Value<V> where V: 'static {
     type Value = V;
 }
 
+// Implements the traits for the single thread version of the library.
+
 impl<V> ProcessSt for Value<V> where V: 'static {
     fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C) where C: ContinuationSt<V> {
         next.call(runtime, self.0);
@@ -29,6 +31,8 @@ impl<V> ProcessMutSt for Value<V> where V: Copy + 'static {
         next.call(runtime, (self, v));
     }
 }
+
+// Implements the traits for the parallel version of the library.
 
 impl<V> ConstraintOnValue for Value<V> where V: Send + Sync + 'static {
     type T = V;

@@ -10,6 +10,8 @@ impl<P> Process for Pause<P> where P: Process {
     type Value = P::Value;
 }
 
+// Implements the traits for the single thread version of the library.
+
 impl<P> ProcessSt for Pause<P> where P: ProcessSt {
     fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where C: ContinuationSt<Self::Value>
@@ -27,6 +29,8 @@ impl<P> ProcessMutSt for Pause<P> where P: ProcessMutSt {
             next.pause().map(|(process, v): (P, P::Value)| (process.pause(), v)));
     }
 }
+
+// Implements the traits for the parallel version of the library.
 
 impl<P> ConstraintOnValue for Pause<P> where P: ProcessPl {
     type T = P::Value;

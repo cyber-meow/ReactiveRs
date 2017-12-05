@@ -35,23 +35,23 @@ debug = []
 #[[bin]]
 #name = "while_signal"
 #path = "src/single_thread/bin/signal/while_signal.rs"
-
-[[bin]]
-name = "p_continuation42"
-path = "src/parallel/bin/continuation42.rs"
-
-[[bin]]
-name = "p_process42"
-path = "src/parallel/bin/process42.rs"
-
-[[bin]]
-name = "p_while_join_test"
-path = "src/parallel/bin/while_join_test.rs"
-
-[[bin]]
-name = "p_pure_signal_test"
-path = "src/parallel/bin/pure_signal_test.rs"
-
-[[bin]]
-name = "p_while_signal"
-path = "src/parallel/bin/while_signal.rs"
+#
+#[[bin]]
+#name = "p_continuation42"
+#path = "src/parallel/bin/continuation42.rs"
+#
+#[[bin]]
+#name = "p_process42"
+#path = "src/parallel/bin/process42.rs"
+#
+#[[bin]]
+#name = "p_while_join_test"
+#path = "src/parallel/bin/while_join_test.rs"
+#
+#[[bin]]
+#name = "p_pure_signal_test"
+#path = "src/parallel/bin/pure_signal_test.rs"
+#
+#[[bin]]
+#name = "p_while_signal"
+#path = "src/parallel/bin/while_signal.rs"

@@ -1,13 +1,13 @@
-use {Runtime, Continuation};
-use process::{Process, ProcessMut};
-
 pub mod signal_runtime;
 use self::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRef};
 
 mod pure_signal;
-pub use self::pure_signal::PureSignal;
 mod mpmc_signal;
+pub use self::pure_signal::PureSignal;
 pub use self::mpmc_signal::MpmcSignal;
+
+use {Runtime, Continuation};
+use process::{Process, ProcessMut};
 
 /// A reactive signal.  
 /// The signal implement the trait `Clone` to assure that it can be used multiple times
