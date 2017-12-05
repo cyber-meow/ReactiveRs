@@ -1,11 +1,11 @@
 use runtime::{SingleThreadRuntime, ParallelRuntime};
-use continuation::{Continuation, ContinuationPl};
+use continuation::{Continuation, ContinuationSt, ContinuationPl};
 
 /// A continuation that calls another continuation in the next instant.
 pub struct Pause<C>(pub(crate) C);
 
 impl<C, V> Continuation<SingleThreadRuntime, V> for Pause<C>
-    where C: Continuation<SingleThreadRuntime, V>, V: 'static
+    where C: ContinuationSt<V>, V: 'static
 {
     fn call(self, runtime: &mut SingleThreadRuntime, value: V) {
         runtime.on_next_instant(Box::new(self.0.map({|()| value})));

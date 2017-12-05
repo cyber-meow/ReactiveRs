@@ -1,6 +1,6 @@
 use runtime::Runtime;
 use continuation::Continuation;
-use process::{Process, ProcessPl, ConstraintOnType};
+use process::{Process, ProcessMut, ConstraintOnValue};
 
 /// Create a new process that returns the value v immediately.
 pub fn value<V>(v: V) -> Value<V> where V: 'static {
@@ -18,16 +18,15 @@ impl<R, V> Process<R> for Value<V> where R: Runtime, V: 'static {
     }
 }
 
-impl<V> ConstraintOnType for Value<V> where V: Send + Sync + 'static {
-    type T = V;
-}
-
-/*
-impl<V> ProcessMut for Value<V> where V: Copy + Send + Sync + 'static {
-    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
-        where Self: Sized, C: Continuation<(Self, Self::Value)>
+impl<R, V> ProcessMut<R> for Value<V> where R: Runtime, V: Copy + 'static {
+    fn call_mut<C>(self, runtime: &mut R, next: C)
+        where Self: Sized, C: Continuation<R, (Self, Self::Value)>
     {
         let v = self.0;
         next.call(runtime, (self, v));
     }
-}*/
+}
+
+impl<V> ConstraintOnValue for Value<V> where V: Send + Sync + 'static {
+    type T = V;
+}
