@@ -1,6 +1,6 @@
 use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};
-use process::{Process, ProcessSt, ProcessMutSt};
+use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
 /// A process that applies a function to the returned value of another process.
@@ -11,6 +11,9 @@ impl<P, F, V> Process for Map<P, F>
 {
     type Value = V;
 }
+
+impl<P, F, V> ProcessMut for Map<P, F>
+    where P: ProcessMut, F: FnMut(P::Value) -> V + 'static {}
 
 // Implements the traits for the single thread version of the library.
 

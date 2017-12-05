@@ -1,10 +1,10 @@
 use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};
-use process::{Process, ProcessSt, ProcessMutSt};
+use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
 /// Create a new process that returns the value v immediately.
-pub fn value<V>(v: V) -> Value<V> where V: 'static {
+pub fn value_proc<V>(v: V) -> Value<V> where V: 'static {
     Value(v)
 }
 
@@ -14,6 +14,8 @@ pub struct Value<V>(V);
 impl<V> Process for Value<V> where V: 'static {
     type Value = V;
 }
+
+impl<V> ProcessMut for Value<V> where V: Copy + 'static {}
 
 // Implements the traits for the single thread version of the library.
 

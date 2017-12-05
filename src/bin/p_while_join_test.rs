@@ -1,8 +1,9 @@
 extern crate reactive;
 
-use reactive::parallel::{Process, ProcessMut};
-use reactive::parallel::process::{value, execute_process};
-use reactive::parallel::process::LoopStatus::{Continue, Exit};
+use reactive::process::{Process, ProcessMut};
+// use reactive::process::execute_process;
+use reactive::process::{value_proc, execute_process_parallel};
+use reactive::process::LoopStatus::{Continue, Exit};
 
 fn main () {
     let mut counter = 0;
@@ -19,11 +20,11 @@ fn main () {
             Continue
         }
     };
-    let p1 = value(10)
+    let p1 = value_proc(10)
              .map(while_cond)
              .pause()
              .while_proc();
-    let p2 = value(())
+    let p2 = value_proc(())
              .pause()
              .map(|()| println!("hello"))
              .pause()
@@ -34,5 +35,9 @@ fn main () {
              .map(|()| println!("hello"))
              .pause()
              .map(|()| println!("hello"));
-    execute_process(p1.join(p2), 2);
+    // Just to say that a same process can be executed in the two kinds of runtime
+    // as long as it's `Send` and `Sync`, can't demonstrate here because the process is
+    // consumed once executed.
+    // execute_process(p1.join(p2));
+    execute_process_parallel(p1.join(p2), 2);
 }

@@ -1,7 +1,7 @@
 extern crate reactive;
 
-use reactive::{Process, ProcessMut};
-use reactive::process::{value, execute_process};
+use reactive::process::{Process, ProcessMut};
+use reactive::process::{value_proc, execute_process};
 use reactive::process::LoopStatus::{Continue, Exit};
 
 fn main () {
@@ -19,12 +19,12 @@ fn main () {
             Continue
         }
     };
-    let p1 = value(100)
+    let p1 = value_proc(100)
              .map(while_cond)
              .pause()
              .while_proc()
              .if_else(
-                 value(()).pause().map(|()| println!("true")),
-                 value(()).map(|()| println!("false")));
+                 value_proc(()).pause().then(value_proc(println!("true"))),
+                 value_proc(()).map(|()| println!("false")));
     execute_process(p1);
 }

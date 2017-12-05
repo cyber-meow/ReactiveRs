@@ -1,6 +1,6 @@
 use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};
-use process::{Process, ProcessSt, ProcessMutSt};
+use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
 /// Executes the second process while ignoring the returned value of the first process.
@@ -9,6 +9,8 @@ pub struct Then<P1, P2> { pub(crate) process: P1, pub(crate) successor: P2 }
 impl<P1, P2> Process for Then<P1, P2> where P1: Process, P2: Process {
     type Value = P2::Value;
 }
+
+impl<P1, P2> ProcessMut for Then<P1, P2> where P1: ProcessMut, P2: ProcessMut {}
 
 // Implements the traits for the single thread version of the library.
 

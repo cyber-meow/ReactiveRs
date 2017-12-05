@@ -1,6 +1,6 @@
 use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};
-use process::{Process, ProcessSt, ProcessMutSt};
+use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
 /// Flatten the process when it returns another process to get only the final process.
@@ -9,6 +9,8 @@ pub struct Flatten<P>(pub(crate) P);
 impl<P> Process for Flatten<P> where P: Process, P::Value: Process {
     type Value = <P::Value as Process>::Value;
 }
+
+impl<P> ProcessMut for Flatten<P> where P: ProcessMut, P::Value: Process {}
 
 // Implements the traits for the single thread version of the library.
 

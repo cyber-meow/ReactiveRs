@@ -4,7 +4,7 @@ use either::{Either, Left, Right};
 
 use runtime::SingleThreadRuntime;
 use continuation::ContinuationSt;
-use process::{Process, ProcessSt, ProcessMutSt};
+use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 
 /// Parallel composition of two processes.
 pub struct Join<P1, P2>(pub(crate) P1, pub(crate) P2);
@@ -12,6 +12,8 @@ pub struct Join<P1, P2>(pub(crate) P1, pub(crate) P2);
 impl<P1, P2> Process for Join<P1, P2> where P1: Process, P2: Process {
     type Value = (P1::Value, P2::Value);
 }
+
+impl<P1, P2> ProcessMut for Join<P1, P2> where P1: ProcessMut, P2: ProcessMut {}
 
 // Implements the traits for the single thread version of the library.
 

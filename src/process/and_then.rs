@@ -1,6 +1,6 @@
 use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};
-use process::{Process, ProcessSt, ProcessMutSt};
+use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
 /// Chain a computation onto the end of another process.
@@ -11,6 +11,9 @@ impl<P1, P2, F> Process for AndThen<P1, F>
 {
     type Value = P2::Value;
 }
+
+impl<P1, P2, F> ProcessMut for AndThen<P1, F>
+    where P1: ProcessMut, P2: Process, F: FnMut(P1::Value) -> P2 + 'static {}
 
 // Implements the traits for the single thread version of the library.
 

@@ -1,6 +1,6 @@
 use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};
-use process::{Process, ProcessSt, ProcessMutSt};
+use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
 /// Selects the process to run according to what the previous process returns.
@@ -15,6 +15,9 @@ impl<P, P1, P2, V> Process for IfElse<P, P1, P2>
 {
     type Value = V;
 }
+
+impl<P, P1, P2, V> ProcessMut for IfElse<P, P1, P2>
+    where P: ProcessMut<Value=bool>, P1: ProcessMut<Value=V>, P2: ProcessMut<Value=V> {}
 
 // Implements the traits for the single thread version of the library.
 

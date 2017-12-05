@@ -1,7 +1,7 @@
 mod execute_process;
 mod process_mut;
 pub use self::execute_process::{execute_process, execute_process_parallel};
-pub use self::process_mut::{ProcessMutSt, ProcessMutPl};
+pub use self::process_mut::{ProcessMut, ProcessMutSt, ProcessMutPl};
 
 mod value;
 mod pause;
@@ -12,7 +12,9 @@ mod then;
 mod if_else;
 mod join;
 mod join_p;
-pub use self::value::{value, Value};
+mod while_proc;
+mod loop_proc;
+pub use self::value::{value_proc, Value};
 pub use self::pause::Pause;
 pub use self::map::Map;
 pub use self::flatten::Flatten;
@@ -20,6 +22,8 @@ pub use self::and_then::AndThen;
 pub use self::then::Then;
 pub use self::if_else::IfElse;
 pub use self::join::Join;
+pub use self::while_proc::{While, LoopStatus};
+pub use self::loop_proc::Loop;
 
 use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};

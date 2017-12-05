@@ -1,6 +1,6 @@
 use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{Continuation, ContinuationSt, ContinuationPl};
-use process::{Process, ProcessSt, ProcessMutSt};
+use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
 /// The process is suspended until next instant.
@@ -9,6 +9,8 @@ pub struct Pause<P>(pub(crate) P);
 impl<P> Process for Pause<P> where P: Process {
     type Value = P::Value;
 }
+
+impl<P> ProcessMut for Pause<P> where P: ProcessMut {}
 
 // Implements the traits for the single thread version of the library.
 
