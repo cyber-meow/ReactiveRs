@@ -1,28 +1,22 @@
 use runtime::{Runtime, SingleThreadRuntime, ParallelRuntime};
-use continuation::Continuation;
-use process::{Process, ConstraintOnValue};
+use continuation::{ContinuationSt, ContinuationPl};
+use process::{ProcessSt, ProcessPl};
 
 /// A process that can be executed multiple times, modifying its environement each time.
-pub trait ProcessMut<R>: Process<R> where R: Runtime {
+pub trait ProcessMutSt: ProcessSt {
     /// Executes the mutable process in the runtime, then calls `next` with the process and the
     /// process's return value.
-    fn call_mut<C>(self, runtime: &mut R, next: C)
-        where Self: Sized, C: Continuation<R, (Self, Self::Value)>;
+    fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
+        where Self: Sized, C: ContinuationSt<(Self, Self::Value)>;
 }
 
-/// Repeatable reactive process to be executed in a single thread.
-pub trait ProcessMutSt: ProcessMut<SingleThreadRuntime> {}
-
-impl<P> ProcessMutSt for P where P: ProcessMut<SingleThreadRuntime> {}
-
-/// Repeatable reactive process that can be safely passed and shared between threads.
-pub trait ProcessMutPl:
-    ProcessMut<ParallelRuntime, Value=<Self as ConstraintOnValue>::T> 
-    + ConstraintOnValue + Send + Sync {}
-
-impl<P> ProcessMutPl for P where P:
-    ProcessMut<ParallelRuntime, Value=<Self as ConstraintOnValue>::T> 
-    + ConstraintOnValue + Send + Sync {}
+/// A process that can be executed multiple times, modifying its environement each time.
+pub trait ProcessMutPl: ProcessPl {
+    /// Executes the mutable process in the runtime, then calls `next` with the process and the
+    /// process's return value.
+    fn call_mut<C>(self, runtime: &mut ParallelRuntime, next: C)
+        where Self: Sized, C: ContinuationPl<(Self, Self::Value)>;
+}
 
 
 /*
