@@ -93,7 +93,7 @@ impl<V> SignalRuntimeRefSt for SpmcSignalRuntimeRef<V> where V: Clone + 'static 
 impl<V> CanEmit<SingleThreadRuntime, V> for SpmcSignalRuntimeRef<V> where V: Clone + 'static {
     fn emit(&mut self, runtime: &mut SingleThreadRuntime, emitted: V) {
         if self.is_emitted() {
-            panic!("A single-producer signal emitted twice for a same instant.");
+            panic!("Multiple emissions of a single-producer signal inside an instant.");
         }
         *self.runtime.value.borrow_mut() = Some(emitted);
         while let Some(c) = self.runtime.await_works.borrow_mut().pop() {

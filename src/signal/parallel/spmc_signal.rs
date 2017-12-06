@@ -22,16 +22,16 @@ impl<V> Clone for SpmcSignalRuntimeRef<V> {
 
 /// Runtime for multi-producer, multi-consumer signals.
 struct SpmcSignalRuntime<V> {
-    value: Mutex<Option<B>>,
-    last_value: Mutex<Option<B>>,
+    value: Mutex<Option<V>>,
+    last_value: Mutex<Option<V>>,
     last_value_updated: Mutex<bool>,
     await_works: TreiberStack<Box<ContinuationPl<()>>>,
     present_works: TreiberStack<Box<ContinuationPl<()>>>,
 }
 
-impl<V> SpmcSignalRuntime<V> where B: Clone {
+impl<V> SpmcSignalRuntime<V> where V: Clone {
     /// Returns a new instance of SignalRuntime.
-    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
+    fn new() -> Self {
         SpmcSignalRuntime {
             value: Mutex::new(None),
             last_value: Mutex::new(None),
@@ -43,7 +43,7 @@ impl<V> SpmcSignalRuntime<V> where B: Clone {
 }
 
 impl<V> SignalRuntimeRefBase<ParallelRuntime> for SpmcSignalRuntimeRef<V>
-    where B: Clone + 'static, F: 'static
+    where V: Clone + 'static
 {
     /// Returns a bool to indicate if the signal was emitted or not on the current instant.
     fn is_emitted(&self) -> bool {
@@ -52,8 +52,8 @@ impl<V> SignalRuntimeRefBase<ParallelRuntime> for SpmcSignalRuntimeRef<V>
 
     /// Resets the signal at the beginning of each instant.
     fn reset(&mut self) {
-        *self.runtime.value.lock().unwrap() = false;
-        *self.runtime.value.lock().unwrap() = self.runtime.default_value.clone();
+        *self.runtime.value.lock().unwrap() = None;
+        *self.runtime.last_value_updated.lock().unwrap() = false;
     }
 
     /// Exececutes all the continuations found in the vector `self.present_works`.
@@ -69,7 +69,7 @@ impl<V> SignalRuntimeRefBase<ParallelRuntime> for SpmcSignalRuntimeRef<V>
 }
 
 impl<V> SignalRuntimeRefPl for SpmcSignalRuntimeRef<V>
-    where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
+    where V: Clone + Send + Sync + 'static
 {
     /// Calls `c` at the first cycle where the signal is present.
     fn on_signal<C>(&mut self, runtime: &mut ParallelRuntime, c: C)
@@ -77,9 +77,9 @@ impl<V> SignalRuntimeRefPl for SpmcSignalRuntimeRef<V>
     {
         // Important: the mutex must be unlocked after the task is added
         // in the stack if this is the case. Similar for `on_signal_present`.
-        let emitted_guard = self.runtime.emitted.lock().unwrap();
-        if *emitted_guard {
-            drop(emitted_guard);
+        let value_guard = self.runtime.value.lock().unwrap();
+        if value_guard.is_some() {
+            drop(value_guard);
             c.call(runtime, ());
         } else {
             runtime.incr_await_counter();
@@ -91,9 +91,9 @@ impl<V> SignalRuntimeRefPl for SpmcSignalRuntimeRef<V>
     fn on_signal_present<C>(&mut self, runtime: &mut ParallelRuntime, c: C)
         where C: ContinuationPl<()>
     {
-        let emitted_guard = self.runtime.emitted.lock().unwrap();
-        if *emitted_guard {
-            drop(emitted_guard);
+        let value_guard = self.runtime.value.lock().unwrap();
+        if value_guard.is_some() {
+            drop(value_guard);
             c.call(runtime, ());
         } else {
             self.runtime.present_works.push(Box::new(c));
@@ -101,17 +101,16 @@ impl<V> SignalRuntimeRefPl for SpmcSignalRuntimeRef<V>
     }
 }
 
-impl<A, V> CanEmit<ParallelRuntime, A> for SpmcSignalRuntimeRef<V>
-    where A: Send + Sync + 'static,
-          B: Clone + Send + Sync + 'static,
-          F: FnMut(A, &mut B) + Send + Sync + 'static
+impl<V> CanEmit<ParallelRuntime, V> for SpmcSignalRuntimeRef<V>
+    where V: Clone + Send + Sync + 'static
 {
-    fn emit(&mut self, runtime: &mut ParallelRuntime, emitted: A) {
-        *self.runtime.emitted.lock().unwrap() = true;
+    fn emit(&mut self, runtime: &mut ParallelRuntime, emitted: V) {
         {
-            let mut v = self.runtime.value.lock().unwrap();
-            let gather = &mut *self.runtime.gather.lock().unwrap();
-            gather(emitted, &mut v);
+            let mut value_guard = self.runtime.value.lock().unwrap();
+            if value_guard.is_some() {
+                panic!("Multiple emissions of a single-producer signal inside an instant.");
+            }
+            *value_guard = Some(emitted);
         }
         while let Some(c) = self.runtime.await_works.try_pop() {
             runtime.decr_await_counter();
@@ -132,20 +131,16 @@ impl<A, V> CanEmit<ParallelRuntime, A> for SpmcSignalRuntimeRef<V>
     }
 }
 
-impl<V> SpmcSignalRuntimeRef<V>
-    where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
-{
+impl<V> SpmcSignalRuntimeRef<V> where V: Clone + Send + Sync + 'static {
     /// Returns a new instance of SignalRuntimeRef.
-    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
-        SpmcSignalRuntimeRef {
-            runtime: Arc::new(SpmcSignalRuntime::new(default, gather)),
-        }
+    fn new() -> Self {
+        SpmcSignalRuntimeRef { runtime: Arc::new(SpmcSignalRuntime::new()) }
     }
 
     /// Returns the value of the signal for the current instant.
     /// The returned value is cloned and can thus be used directly.
-    fn get_value(&self) -> B {
-        self.runtime.value.lock().unwrap().clone()
+    fn get_value(&self) -> V {
+        self.runtime.value.lock().unwrap().clone().unwrap()
     }
 }
 
@@ -158,9 +153,7 @@ impl<V> Clone for SpmcSignal<V> {
     }
 }
 
-impl<V> Signal for SpmcSignal<V>
-    where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
-{
+impl<V> Signal for SpmcSignal<V> where V: Clone + Send + Sync + 'static {
     type RuntimeRef = SpmcSignalRuntimeRef<V>;
     
     fn runtime(&self) -> SpmcSignalRuntimeRef<V> {
@@ -168,65 +161,49 @@ impl<V> Signal for SpmcSignal<V>
     }
 }
 
-impl<V> ValuedSignal for SpmcSignal<V>
-    where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
-{
-    type Stored = B;
+impl<V> ValuedSignal for SpmcSignal<V> where V: Clone + Send + Sync + 'static {
+    type Stored = V;
 
-    fn last_value(&self) -> Option<B> {
+    fn last_value(&self) -> Option<V> {
         let r = self.runtime();
         let last_v = r.runtime.last_value.lock().unwrap();
         last_v.clone()
     }
 }
 
-impl <V> SpmcSignal<V> where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static {
-    /// Creates a new mpmc signal.
-    pub fn new<A>(default: B, gather: F) -> Self
-        where A: Send + Sync + 'static, F: FnMut(A, &mut B)
-    {
-        SpmcSignal(SpmcSignalRuntimeRef::new(default, gather))
+impl <V> SpmcSignal<V> where V: Clone + Send + Sync + 'static {
+    /// Creates a new spmc signal.
+    pub fn new<A>() -> Self {
+        SpmcSignal(SpmcSignalRuntimeRef::new())
     }
 }
 
 /* Await */
 
-impl<V> ConstraintOnValue for Await<SpmcSignal<V>> where B: Send + Sync {
-    type T = B;
+impl<V> ConstraintOnValue for Await<SpmcSignal<V>> where V: Send + Sync {
+    type T = V;
 }
 
-impl<V> ProcessPl for Await<SpmcSignal<V>>
-    where B: Clone + Send + Sync + 'static, F: 'static + Send + Sync
-{
+impl<V> ProcessPl for Await<SpmcSignal<V>> where V: Clone + Send + Sync + 'static {
     fn call<C>(self, runtime: &mut ParallelRuntime, next: C)
         where C: ContinuationPl<Self::Value>
     {
         let signal_runtime = self.0.runtime();
-        let eoi_continuation = move |r: &mut ParallelRuntime, ()| {
-            let stored = signal_runtime.get_value();
-            r.on_next_instant(Box::new(|r: &mut ParallelRuntime, ()| next.call(r, stored)));
-        };
         self.0.runtime().on_signal(
             runtime,
-            |r: &mut ParallelRuntime, ()| r.on_end_of_instant(Box::new(eoi_continuation)));
+            move |r: &mut ParallelRuntime, ()| next.call(r, signal_runtime.get_value()));
     }
 }
 
-impl<V> ProcessMutPl for Await<SpmcSignal<V>>
-    where B: Clone + Send + Sync + 'static, F: 'static + Send + Sync
-{
+impl<V> ProcessMutPl for Await<SpmcSignal<V>> where V: Clone + Send + Sync + 'static {
     fn call_mut<C>(self, runtime: &mut ParallelRuntime, next: C)
         where Self: Sized, C: ContinuationPl<(Self, Self::Value)>
     {
         let signal_runtime = self.0.runtime();
         let mut signal_runtime2 = self.0.runtime();
-        let eoi_continuation = move |r: &mut ParallelRuntime, ()| {
-            let stored = signal_runtime.get_value();
-            r.on_next_instant(
-                Box::new(|r: &mut ParallelRuntime, ()| next.call(r, (self, stored))));
-        };
         signal_runtime2.on_signal(
             runtime,
-            |r: &mut ParallelRuntime, ()| r.on_end_of_instant(Box::new(eoi_continuation)));
+            move |r: &mut ParallelRuntime, ()|
+                next.call(r, (self, signal_runtime.get_value())));
     }
 }
