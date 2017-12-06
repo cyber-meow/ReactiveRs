@@ -176,9 +176,6 @@ impl ParallelRuntime {
     /// and decides if the program should be terminate (`true` means shouldn't).
     fn deal_with_next_instant_works(&mut self) -> bool {
         if self.next_instant_works.is_empty() {
-            if self.await_counter.load(Ordering::SeqCst) != 0 {
-                return true;
-            }
             let (ref lock, ref cvar) = *self.whether_to_continue;
             {
                 let mut runtime_status = lock.lock().unwrap();
@@ -188,7 +185,10 @@ impl ParallelRuntime {
                     {
                         *runtime_status = RuntimeStatus::Finished;
                         cvar.notify_all();
-                        return false;
+                        // If this is `true` the program hangs. I think this should
+                        // be the desired behavior when we await some signals that can
+                        // never be emitted.
+                        return self.await_counter.load(Ordering::SeqCst) != 0
                     },
                     RuntimeStatus::Undetermined(k) => {
                         *runtime_status = RuntimeStatus::Undetermined(k+1);
@@ -204,7 +204,9 @@ impl ParallelRuntime {
                         runtime_status = cvar.wait(runtime_status).unwrap();
                     },
                     RuntimeStatus::WorkRemained => return true,
-                    RuntimeStatus::Finished => return false,
+                    RuntimeStatus::Finished => {
+                        return self.await_counter.load(Ordering::SeqCst) != 0;
+                    },
                 };
             }
         } else {
@@ -213,13 +215,13 @@ impl ParallelRuntime {
                 let mut runtime_status = lock.lock().unwrap();
                 match *runtime_status {
                     RuntimeStatus::Undetermined(_) => {
-                        *runtime_status = RuntimeStatus::WorkRemained;
                         let mut working_pool = self.working_pool.lock().unwrap();
                         debug_assert!(working_pool.is_empty());
                         *working_pool = (0..self.num_threads_total).collect();
                         let mut eoi_working_pool = self.eoi_working_pool.lock().unwrap();
                         debug_assert!(eoi_working_pool.is_empty());
                         *eoi_working_pool = (0..self.num_threads_total).collect();
+                        *runtime_status = RuntimeStatus::WorkRemained;
                         cvar.notify_all();
                     },
                     RuntimeStatus::WorkRemained => (),
