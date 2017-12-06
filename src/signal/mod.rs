@@ -17,9 +17,9 @@ pub use self::await_immediate::AwaitImmediate;
 pub use self::present_else::PresentElse;
 
 pub mod pure_signal;
-pub mod mpmc_signal;
+pub mod valued_signal;
 pub use self::pure_signal::PureSignal;
-pub use self::mpmc_signal::MpmcSignal;
+pub use self::valued_signal::ValuedSignal;
 
 pub mod parallel;
 pub mod single_thread;

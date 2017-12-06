@@ -5,12 +5,12 @@ use std::cell::RefCell;
 
 use reactive::process::{Process, ProcessMut, value_proc, execute_process};
 use reactive::process::LoopStatus::{Continue, Exit};
-use reactive::signal::MpmcSignal;
-use reactive::signal::single_thread::MpmcSignalImpl;
+use reactive::signal::ValuedSignal;
+use reactive::signal::single_thread::MpmcSignal;
 
 fn main () {
     let gather = |x: isize, xs: &mut Vec<isize>| xs.push(x);
-    let s = MpmcSignalImpl::new(Vec::new(), gather);
+    let s = MpmcSignal::new(Vec::new(), gather);
     let counter = Rc::new(RefCell::new(0));
     let s_clone = s.clone();
     let counter_clone = counter.clone();
