@@ -59,28 +59,28 @@ impl ParallelRuntime {
     
     /// Registers a continuation to execute at the end of the instant. Runtime calls for `c`
     /// behave as if they where executed during the next instant.
-    fn on_end_of_instant(&mut self, c: Box<ContinuationPl<()>>) {
+    pub(crate) fn on_end_of_instant(&mut self, c: Box<ContinuationPl<()>>) {
         self.end_of_instant_works.push(c);
     }
     
     /// Increases the await counter by 1 when some process await a signal to continue.
-    fn incr_await_counter(&mut self) {
+    pub(crate) fn incr_await_counter(&mut self) {
         self.await_counter.fetch_add(1, Ordering::SeqCst);
     }
 
     /// Decrease the await counter by 1 when some signal is emitted and
     /// the corresponding process is thus executed.
-    fn decr_await_counter(&mut self) {
+    pub(crate) fn decr_await_counter(&mut self) {
         self.await_counter.fetch_sub(1, Ordering::SeqCst);
     }
 
     /// Registers a emitted signal for the current instant.
-    fn emit_signal(&mut self, s: Box<SignalRuntimeRefBasePl>) {
+    pub(crate) fn emit_signal(&mut self, s: Box<SignalRuntimeRefBasePl>) {
         self.emitted_signals.push(s);
     }
     
     /// Registers a signal for which we need to test its presence on the current instant.
-    fn add_test_signal(&mut self, s: Box<SignalRuntimeRefBasePl>) {
+    pub(crate) fn add_test_signal(&mut self, s: Box<SignalRuntimeRefBasePl>) {
         self.test_presence_signals.push(s);
     }
 

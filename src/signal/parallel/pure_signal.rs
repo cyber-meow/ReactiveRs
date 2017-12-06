@@ -1,9 +1,13 @@
+use std::sync::{Arc, Mutex};
 use crossbeam::sync::TreiberStack;
 
-use parallel::{Runtime, Continuation};
-use parallel::process::{Process, ProcessMut};
-use parallel::signal::Signal;
-use parallel::signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRef};
+use runtime::ParallelRuntime;
+use continuation::ContinuationPl;
+use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
+
+use signal::Signal;
+use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefPl};
+use signal::pure_signal::{PureSignal, Emit};
 
 /// A shared pointer to a signal runtime.
 #[derive(Clone)]
@@ -14,8 +18,8 @@ pub struct PureSignalRuntimeRef {
 /// Runtime for pure signals.
 struct PureSignalRuntime {
     emitted: Mutex<bool>,
-    await_works: TreiberStack<Box<Continuation<()>>>,
-    present_works: TreiberStack<Box<Continuation<()>>>,
+    await_works: TreiberStack<Box<ContinuationPl<()>>>,
+    present_works: TreiberStack<Box<ContinuationPl<()>>>,
 }
 
 impl PureSignalRuntime {
@@ -29,7 +33,7 @@ impl PureSignalRuntime {
     }
 }
 
-impl SignalRuntimeRefBase for PureSignalRuntimeRef {
+impl SignalRuntimeRefBase<ParallelRuntime> for PureSignalRuntimeRef {
     /// Returns a bool to indicate if the signal was emitted or not on the current instant.
     fn is_emitted(&self) -> bool {
         *self.runtime.emitted.lock().unwrap()
@@ -41,7 +45,7 @@ impl SignalRuntimeRefBase for PureSignalRuntimeRef {
     }
 
     /// Exececutes all the continuations found in the vector `self.present_works`.
-    fn execute_present_works(&mut self, runtime: &mut Runtime) {
+    fn execute_present_works(&mut self, runtime: &mut ParallelRuntime) {
         while let Some(c) = self.runtime.present_works.try_pop() {
             // If something is to be executed, the work is only to register a
             // task on current or next instant. It doen't mean to take a long time
@@ -53,9 +57,11 @@ impl SignalRuntimeRefBase for PureSignalRuntimeRef {
 }
 
 
-impl SignalRuntimeRef for PureSignalRuntimeRef {
+impl SignalRuntimeRefPl for PureSignalRuntimeRef {
     /// Calls `c` at the first cycle where the signal is present.
-    fn on_signal<C>(&mut self, runtime: &mut Runtime, c: C) where C: Continuation<()> {
+    fn on_signal<C>(&mut self, runtime: &mut ParallelRuntime, c: C)
+        where C: ContinuationPl<()>
+    {
         // Important: the mutex must be unlocked after the task is added
         // in the stack if this is the case. Similar for `on_signal_present`.
         let emitted_guard = self.runtime.emitted.lock().unwrap();
@@ -69,8 +75,8 @@ impl SignalRuntimeRef for PureSignalRuntimeRef {
     }
     
     /// Calls `c` only if the signal is present during this cycle.
-    fn on_signal_present<C>(&mut self, runtime: &mut Runtime, c: C)
-        where C: Continuation<()>
+    fn on_signal_present<C>(&mut self, runtime: &mut ParallelRuntime, c: C)
+        where C: ContinuationPl<()>
     {
         let emitted_guard = self.runtime.emitted.lock().unwrap();
         if *emitted_guard {
@@ -90,7 +96,7 @@ impl PureSignalRuntimeRef {
     }
 
     /// Sets the signal as emitted for the current instant.
-    fn emit(&mut self, runtime: &mut Runtime) {
+    fn emit(&mut self, runtime: &mut ParallelRuntime) {
         *self.runtime.emitted.lock().unwrap() = true;
         while let Some(c) = self.runtime.await_works.try_pop() {
             runtime.decr_await_counter();
@@ -103,9 +109,9 @@ impl PureSignalRuntimeRef {
 
 /// Interface of pure signal, to be used by the user.
 #[derive(Clone)]
-pub struct PureSignal(PureSignalRuntimeRef);
+pub struct PureSignalImpl(PureSignalRuntimeRef);
 
-impl Signal for PureSignal {
+impl Signal for PureSignalImpl {
     type RuntimeRef = PureSignalRuntimeRef;
     
     fn runtime(&self) -> PureSignalRuntimeRef {
@@ -113,35 +119,33 @@ impl Signal for PureSignal {
     }
 }
 
-impl PureSignal {
+impl PureSignal for PureSignalImpl {
     /// Creates a new pure signal.
-    pub fn new() -> Self {
-        PureSignal(PureSignalRuntimeRef::new())
-    }
-    
-    /// Returns a process that emits the signal when it is called.
-    pub fn emit(&self) -> Emit where Self: Sized {
-        Emit(self.clone())
+    fn new() -> Self {
+        PureSignalImpl(PureSignalRuntimeRef::new())
     }
 }
 
-pub struct Emit(PureSignal);
+/* Emit */
 
-impl Process for Emit {
-    type Value = ();
+impl ConstraintOnValue for Emit<PureSignalImpl> {
+    type T = ();
+}
 
-    fn call<C>(self, runtime: &mut Runtime, next: C) where C: Continuation<Self::Value> {
+impl ProcessPl for Emit<PureSignalImpl> {
+    fn call<C>(self, runtime: &mut ParallelRuntime, next: C)
+        where C: ContinuationPl<Self::Value>
+    {
         self.0.runtime().emit(runtime);
         next.call(runtime, ());
     }
 }
 
-impl ProcessMut for Emit {
-    fn call_mut<C>(self, runtime: &mut Runtime, next: C)
-        where Self: Sized, C: Continuation<(Self, Self::Value)>
+impl ProcessMutPl for Emit<PureSignalImpl> {
+    fn call_mut<C>(self, runtime: &mut ParallelRuntime, next: C)
+        where Self: Sized, C: ContinuationPl<(Self, Self::Value)>
     {
         self.0.runtime().emit(runtime);
         next.call(runtime, (self, ()));
     }
 }
-

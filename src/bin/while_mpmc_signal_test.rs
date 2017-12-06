@@ -3,22 +3,21 @@ extern crate reactive;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use reactive::{Process, ProcessMut};
-use reactive::process::{value, execute_process};
+use reactive::process::{Process, ProcessMut, value_proc, execute_process};
 use reactive::process::LoopStatus::{Continue, Exit};
-
 use reactive::signal::MpmcSignal;
+use reactive::signal::single_thread::MpmcSignalImpl;
 
 fn main () {
     let gather = |x: isize, xs: &mut Vec<isize>| xs.push(x);
-    let s = MpmcSignal::new(Vec::new(), gather);
+    let s = MpmcSignalImpl::new(Vec::new(), gather);
     let counter = Rc::new(RefCell::new(0));
     let s_clone = s.clone();
     let counter_clone = counter.clone();
     let decide_emit = move |n| {
         let v = *counter_clone.borrow();
-        value(v%2==0)
-        .if_else(s_clone.emit(v), value(()))
+        value_proc(v%2==0)
+        .if_else(s_clone.emit(v), value_proc(()))
         .map(move |()| n)
     };
     let while_p1 = move |n| {
@@ -38,7 +37,7 @@ fn main () {
             Continue
         }
     };
-    let p1 = value(100)
+    let p1 = value_proc(100)
              .and_then(decide_emit)
              .map(while_p1)
              .pause()

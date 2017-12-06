@@ -20,7 +20,7 @@ pub trait SignalRuntimeRefBase<R>: 'static where R: Runtime {
     }
 }
 
-pub trait SignalRuntimeRefSt: SignalRuntimeRefBase<SingleThreadRuntime> {
+pub trait SignalRuntimeRefSt: SignalRuntimeRefBaseSt {
     /// Calls `c` at the first cycle where the signal is present.
     fn on_signal<C>(&mut self, runtime: &mut SingleThreadRuntime, c: C)
         where C: ContinuationSt<()>;
@@ -30,7 +30,7 @@ pub trait SignalRuntimeRefSt: SignalRuntimeRefBase<SingleThreadRuntime> {
         where C: ContinuationSt<()>;
 }
 
-pub trait SignalRuntimeRefPl: SignalRuntimeRefBase<ParallelRuntime> {
+pub trait SignalRuntimeRefPl: SignalRuntimeRefBasePl {
     /// Calls `c` at the first cycle where the signal is present.
     fn on_signal<C>(&mut self, runtime: &mut ParallelRuntime, c: C)
         where C: ContinuationPl<()>;
