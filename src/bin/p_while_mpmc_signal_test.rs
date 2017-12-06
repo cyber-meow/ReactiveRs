@@ -3,6 +3,7 @@ extern crate reactive;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+<<<<<<< HEAD
 
 use reactive::process::{Process, ProcessMut, value_proc, execute_process_parallel};
 use reactive::process::LoopStatus::{Continue, Exit};
@@ -12,6 +13,16 @@ use reactive::signal::parallel::MpmcSignalImpl;
 fn main () {
     let gather = |x: usize, xs: &mut Vec<usize>| xs.push(x);
     let s = MpmcSignalImpl::new(Vec::new(), gather);
+=======
+use reactive::process::{Process, ProcessMut, value_proc, execute_process_parallel};
+use reactive::process::LoopStatus::{Continue, Exit};
+use reactive::signal::ValuedSignal;
+use reactive::signal::parallel::MpmcSignal;
+
+fn main () {
+    let gather = |x: usize, xs: &mut Vec<usize>| xs.push(x);
+    let s = MpmcSignal::new(Vec::new(), gather);
+>>>>>>> spmc signal
     let counter = Arc::new(AtomicUsize::new(0));
     let s_clone = s.clone();
     let counter_clone = counter.clone();

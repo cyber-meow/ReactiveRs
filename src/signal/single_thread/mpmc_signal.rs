@@ -7,7 +7,7 @@ use process::{ProcessSt, ProcessMutSt};
 
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefSt};
-use signal::mpmc_signal::{MpmcSignal, Emit, Await};
+use signal::valued_signal::{ValuedSignal, CanEmit, Await};
 
 /// A shared pointer to a signal runtime.
 pub struct MpmcSignalRuntimeRef<B, F> {
@@ -26,7 +26,7 @@ struct MpmcSignalRuntime<B, F> {
     default_value: B,
     gather: RefCell<F>,
     value: RefCell<B>,
-    last_value: RefCell<B>,
+    last_value: RefCell<Option<B>>,
     last_value_updated: RefCell<bool>,
     await_works: RefCell<Vec<Box<ContinuationSt<()>>>>,
     present_works: RefCell<Vec<Box<ContinuationSt<()>>>>,
@@ -39,8 +39,8 @@ impl<B, F> MpmcSignalRuntime<B, F> where B: Clone {
             emitted: RefCell::new(false),
             default_value: default.clone(),
             gather: RefCell::new(gather),
-            value: RefCell::new(default.clone()),
-            last_value: RefCell::new(default),
+            value: RefCell::new(default),
+            last_value: RefCell::new(None),
             last_value_updated: RefCell::new(false),
             await_works: RefCell::new(Vec::new()),
             present_works: RefCell::new(Vec::new()),
@@ -58,9 +58,11 @@ impl<B, F> SignalRuntimeRefBase<SingleThreadRuntime> for MpmcSignalRuntimeRef<B,
 
     /// Resets the signal at the beginning of each instant.
     fn reset(&mut self) {
-        *self.runtime.emitted.borrow_mut() = false;
-        *self.runtime.value.borrow_mut() = self.runtime.default_value.clone();
-        *self.runtime.last_value_updated.borrow_mut() = false;
+        if self.is_emitted() {
+            *self.runtime.emitted.borrow_mut() = false;
+            *self.runtime.value.borrow_mut() = self.runtime.default_value.clone();
+            *self.runtime.last_value_updated.borrow_mut() = false;
+        }
     }
 
     /// Exececutes all the continuations found in the vector `self.present_works`.
@@ -79,7 +81,7 @@ impl<B, F> SignalRuntimeRefSt for MpmcSignalRuntimeRef<B, F>
     fn on_signal<C>(&mut self, runtime: &mut SingleThreadRuntime, c: C)
         where C: ContinuationSt<()>
     {
-        if *self.runtime.emitted.borrow() {
+        if self.is_emitted() {
             c.call(runtime, ());
         } else {
             runtime.incr_await_counter();
@@ -91,7 +93,7 @@ impl<B, F> SignalRuntimeRefSt for MpmcSignalRuntimeRef<B, F>
     fn on_signal_present<C>(&mut self, runtime: &mut SingleThreadRuntime, c: C)
         where C: ContinuationSt<()>
     {
-        if *self.runtime.emitted.borrow() {
+        if self.is_emitted() {
             c.call(runtime, ());
         } else {
             self.runtime.present_works.borrow_mut().push(Box::new(c));
@@ -99,18 +101,10 @@ impl<B, F> SignalRuntimeRefSt for MpmcSignalRuntimeRef<B, F>
     }
 }
 
-impl<B, F> MpmcSignalRuntimeRef<B, F> where B: Clone + 'static, F: 'static {
-    /// Returns a new instance of SignalRuntimeRef.
-    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
-        MpmcSignalRuntimeRef {
-            runtime: Rc::new(MpmcSignalRuntime::new(default, gather)),
-        }
-    }
-
-    /// Emits the value `emitted` to the signal.
-    fn emit<A>(&mut self, runtime: &mut SingleThreadRuntime, emitted: A)
-        where F: FnMut(A, &mut B)
-    {
+impl<A, B, F> CanEmit<SingleThreadRuntime, A> for MpmcSignalRuntimeRef<B, F>
+    where A: 'static, B: Clone + 'static, F: FnMut(A, &mut B) + 'static
+{
+    fn emit(&mut self, runtime: &mut SingleThreadRuntime, emitted: A) {
         *self.runtime.emitted.borrow_mut() = true;
         {
             let mut v = self.runtime.value.borrow_mut();
@@ -126,11 +120,20 @@ impl<B, F> MpmcSignalRuntimeRef<B, F> where B: Clone + 'static, F: 'static {
         let signal_ref = self.clone();
         let update_last_value = move |_: &mut SingleThreadRuntime, ()| {
             if !*signal_ref.runtime.last_value_updated.borrow() {
-                *signal_ref.runtime.last_value.borrow_mut() = signal_ref.get_value();
+                *signal_ref.runtime.last_value.borrow_mut() = Some(signal_ref.get_value());
                 *signal_ref.runtime.last_value_updated.borrow_mut() = true;
             }
         };
         runtime.on_end_of_instant(Box::new(update_last_value));
+    }
+}
+
+impl<B, F> MpmcSignalRuntimeRef<B, F> where B: Clone + 'static, F: 'static {
+    /// Returns a new instance of SignalRuntimeRef.
+    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
+        MpmcSignalRuntimeRef {
+            runtime: Rc::new(MpmcSignalRuntime::new(default, gather)),
+        }
     }
 
     /// Returns the value of the signal for the current instant.
@@ -141,15 +144,15 @@ impl<B, F> MpmcSignalRuntimeRef<B, F> where B: Clone + 'static, F: 'static {
 }
 
 /// Interface of mpmc signal. This is what is directly exposed to users.
-pub struct MpmcSignalImpl<B, F>(MpmcSignalRuntimeRef<B, F>);
+pub struct MpmcSignal<B, F>(MpmcSignalRuntimeRef<B, F>);
 
-impl<B, F> Clone for MpmcSignalImpl<B, F> {
+impl<B, F> Clone for MpmcSignal<B, F> {
     fn clone(&self) -> Self {
-        MpmcSignalImpl(self.0.clone())
+        MpmcSignal(self.0.clone())
     }
 }
 
-impl<B, F> Signal for MpmcSignalImpl<B, F> where B: Clone + 'static, F: 'static {
+impl<B, F> Signal for MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
     type RuntimeRef = MpmcSignalRuntimeRef<B, F>;
     
     fn runtime(&self) -> MpmcSignalRuntimeRef<B, F> {
@@ -157,51 +160,26 @@ impl<B, F> Signal for MpmcSignalImpl<B, F> where B: Clone + 'static, F: 'static 
     }
 }
 
-impl<B, F> MpmcSignal for MpmcSignalImpl<B, F> where B: Clone + 'static, F: 'static {
+impl<B, F> ValuedSignal for MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
     type Stored = B;
-    type Gather = F;
     
-    fn last_value(&self) -> B {
+    fn last_value(&self) -> Option<B> {
         let r = self.runtime();
         let last_v = r.runtime.last_value.borrow();
         last_v.clone()
     }
 }
     
-impl<B, F> MpmcSignalImpl<B, F> where B: Clone + 'static, F: 'static {
+impl<B, F> MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
     /// Creates a new mpmc signal.
     pub fn new<A>(default: B, gather: F) -> Self where A: 'static, F: FnMut(A, &mut B) {
-        MpmcSignalImpl(MpmcSignalRuntimeRef::new(default, gather))
+        MpmcSignal(MpmcSignalRuntimeRef::new(default, gather))
     }
 }
 
-impl<A, B, F> ProcessSt for Emit<MpmcSignalImpl<B, F>, A>
-    where A: 'static, B: Clone + 'static, F: FnMut(A, &mut B) + 'static
-{
-    fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
-        where C: ContinuationSt<Self::Value>
-    {
-        self.signal.runtime().emit(runtime, self.emitted);
-        next.call(runtime, ());
-    }
-}
+/* Await */
 
-/* Emit */
-
-impl<A, B, F> ProcessMutSt for Emit<MpmcSignalImpl<B, F>, A>
-    where A: Clone + 'static, B: Clone + 'static, F: FnMut(A, &mut B) + 'static
-{
-    fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
-        where Self: Sized, C: ContinuationSt<(Self, Self::Value)>
-    {
-        self.signal.runtime().emit(runtime, self.emitted.clone());
-        next.call(runtime, (self, ()));
-    }
-}
-
-impl<B, F> ProcessSt for Await<MpmcSignalImpl<B, F>> 
-    where B: Clone + 'static, F: 'static
-{
+impl<B, F> ProcessSt for Await<MpmcSignal<B, F>> where B: Clone + 'static, F: 'static {
     fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where C: ContinuationSt<Self::Value>
     {
@@ -218,11 +196,7 @@ impl<B, F> ProcessSt for Await<MpmcSignalImpl<B, F>>
     }
 }
 
-/* Await */
-
-impl <B, F> ProcessMutSt for Await<MpmcSignalImpl<B, F>>
-    where B: Clone + 'static, F: 'static
-{
+impl<B, F> ProcessMutSt for Await<MpmcSignal<B, F>> where B: Clone + 'static, F: 'static {
     fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where Self: Sized, C: ContinuationSt<(Self, Self::Value)>
     {
