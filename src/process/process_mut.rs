@@ -2,12 +2,12 @@ use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};
 use process::{Process, ProcessSt, ProcessPl};
 
-use process::while_proc::{While, LoopStatus};
-use process::loop_proc::Loop;
+//use process::while_proc::{While, LoopStatus};
+//use process::loop_proc::Loop;
 
 /// A process that can be executed multiple times, modifying its environement each time.
-pub trait ProcessMut: Process {
-    /// A classic loop that continues or stops accroding to the returned value of the process.
+pub trait ProcessMut: Process {}
+/*    /// A classic loop that continues or stops accroding to the returned value of the process.
     fn while_proc<V>(self) -> While<Self>
         where Self: ProcessMut<Value=LoopStatus<V>> + Sized
     {
@@ -19,7 +19,7 @@ pub trait ProcessMut: Process {
         Loop(self)
     }
 }
-
+*/
 /// A repeatable reactive process to be executed in a single thread.
 pub trait ProcessMutSt: ProcessMut + ProcessSt {
     /// Executes the mutable process in the runtime, then calls `next` with the process and the
