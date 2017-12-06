@@ -2,16 +2,16 @@ use std::rc::Rc;
 
 use runtime::Runtime;
 use continuation::ContinuationSt;
-use signal::signal_runtime::SignalRuntimeRefBase;
+use signal::signal_runtime::SignalRuntimeRefBaseSt;
 
 /// Runtime for executing reactive continuations.
 pub struct SingleThreadRuntime {
     current_instant_works: Rc<Vec<Box<ContinuationSt<()>>>>,
     next_instant_works: Rc<Vec<Box<ContinuationSt<()>>>>,
     end_of_instant_works: Vec<Box<ContinuationSt<()>>>,
-    emitted_signals: Vec<Box<SignalRuntimeRefBase<SingleThreadRuntime>>>,
+    emitted_signals: Vec<Box<SignalRuntimeRefBaseSt>>,
     await_counter: usize,
-    test_presence_signals: Vec<Box<SignalRuntimeRefBase<SingleThreadRuntime>>>,
+    test_presence_signals: Vec<Box<SignalRuntimeRefBaseSt>>,
     #[cfg(feature = "debug")]
     instant: usize,
 }
@@ -88,12 +88,12 @@ impl SingleThreadRuntime {
     }
     
     /// Registers a emitted signal for the current instant.
-    pub(crate) fn emit_signal(&mut self, s: Box<SignalRuntimeRefBase<Self>>) {
+    pub(crate) fn emit_signal(&mut self, s: Box<SignalRuntimeRefBaseSt>) {
         self.emitted_signals.push(s);
     }
 
     /// Registers a signal for which we need to test its presence on the current instant.
-    pub(crate) fn add_test_signal(&mut self, s: Box<SignalRuntimeRefBase<Self>>) {
+    pub(crate) fn add_test_signal(&mut self, s: Box<SignalRuntimeRefBaseSt>) {
         self.test_presence_signals.push(s);
     }
 }

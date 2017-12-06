@@ -1,5 +1,5 @@
-use runtime::{Runtime, ParallelRuntime};
-use continuation::Continuation;
+use runtime::{Runtime, SingleThreadRuntime, ParallelRuntime};
+use continuation::{ContinuationSt, ContinuationPl};
 
 pub trait SignalRuntimeRefBase<R>: 'static where R: Runtime {
     /// Returns a bool to indicate if the signal was emitted or not on the current instant.
@@ -20,13 +20,28 @@ pub trait SignalRuntimeRefBase<R>: 'static where R: Runtime {
     }
 }
 
-pub trait SignalRuntimeRef<R>: SignalRuntimeRefBase<R> where R: Runtime {
+pub trait SignalRuntimeRefSt: SignalRuntimeRefBaseSt {
     /// Calls `c` at the first cycle where the signal is present.
-    fn on_signal<C>(&mut self, runtime: &mut R, c: C) where C: Continuation<R, ()>;
+    fn on_signal<C>(&mut self, runtime: &mut SingleThreadRuntime, c: C)
+        where C: ContinuationSt<()>;
     
     /// Calls `c` only if the signal is present during this cycle.
-    fn on_signal_present<C>(&mut self, runtime: &mut R, c: C)
-        where C: Continuation<R, ()>;
+    fn on_signal_present<C>(&mut self, runtime: &mut SingleThreadRuntime, c: C)
+        where C: ContinuationSt<()>;
 }
 
-pub trait SignalRuntimeRefBasePl: SignalRuntimeRefBase<ParallelRuntime> + Send{}
+pub trait SignalRuntimeRefPl: SignalRuntimeRefBasePl {
+    /// Calls `c` at the first cycle where the signal is present.
+    fn on_signal<C>(&mut self, runtime: &mut ParallelRuntime, c: C)
+        where C: ContinuationPl<()>;
+    
+    /// Calls `c` only if the signal is present during this cycle.
+    fn on_signal_present<C>(&mut self, runtime: &mut ParallelRuntime, c: C)
+        where C: ContinuationPl<()>;
+}
+
+pub trait SignalRuntimeRefBaseSt: SignalRuntimeRefBase<SingleThreadRuntime> {}
+pub trait SignalRuntimeRefBasePl: SignalRuntimeRefBase<ParallelRuntime> + Send {}
+
+impl<S> SignalRuntimeRefBaseSt for S where S: SignalRuntimeRefBase<SingleThreadRuntime> {}
+impl<S> SignalRuntimeRefBasePl for S where S: SignalRuntimeRefBase<ParallelRuntime> + Send {}
