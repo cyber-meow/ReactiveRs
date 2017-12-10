@@ -127,15 +127,15 @@ impl<V> SpmcSignalRuntimeRef<V> where V: Clone + 'static {
 }
 
 /// Interface of spmc signal. This is what is directly exposed to users.
-pub struct SpmcSignal<V>(SpmcSignalRuntimeRef<V>);
+pub struct SpmcSignalSt<V>(SpmcSignalRuntimeRef<V>);
 
-impl<V> Clone for SpmcSignal<V> {
+impl<V> Clone for SpmcSignalSt<V> {
     fn clone(&self) -> Self {
-        SpmcSignal(self.0.clone())
+        SpmcSignalSt(self.0.clone())
     }
 }
 
-impl<V> Signal for SpmcSignal<V> where V: Clone + 'static {
+impl<V> Signal for SpmcSignalSt<V> where V: Clone + 'static {
     type RuntimeRef = SpmcSignalRuntimeRef<V>;
     
     fn runtime(&self) -> SpmcSignalRuntimeRef<V> {
@@ -143,7 +143,7 @@ impl<V> Signal for SpmcSignal<V> where V: Clone + 'static {
     }
 }
 
-impl<V> ValuedSignal for SpmcSignal<V> where V: Clone + 'static {
+impl<V> ValuedSignal for SpmcSignalSt<V> where V: Clone + 'static {
     type Stored = V;
  
     fn last_value(&self) -> Option<V> {
@@ -153,16 +153,16 @@ impl<V> ValuedSignal for SpmcSignal<V> where V: Clone + 'static {
     }
 }
 
-impl<V> SpmcSignal<V> where V: Clone + 'static {
+impl<V> SpmcSignalSt<V> where V: Clone + 'static {
     /// Creates a new spmc signal.
     pub fn new() -> Self {
-        SpmcSignal(SpmcSignalRuntimeRef::new())
+        SpmcSignalSt(SpmcSignalRuntimeRef::new())
     }
 }
 
 /* Await */
 
-impl<V> ProcessSt for Await<SpmcSignal<V>> where V: Clone + 'static {
+impl<V> ProcessSt for Await<SpmcSignalSt<V>> where V: Clone + 'static {
     fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where C: ContinuationSt<Self::Value>
     {
@@ -173,7 +173,7 @@ impl<V> ProcessSt for Await<SpmcSignal<V>> where V: Clone + 'static {
     }
 }
 
-impl<V> ProcessMutSt for Await<SpmcSignal<V>> where V: Clone + 'static {
+impl<V> ProcessMutSt for Await<SpmcSignalSt<V>> where V: Clone + 'static {
     fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where Self: Sized, C: ContinuationSt<(Self, Self::Value)>
     {

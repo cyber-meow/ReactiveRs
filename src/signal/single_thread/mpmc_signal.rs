@@ -144,15 +144,15 @@ impl<B, F> MpmcSignalRuntimeRef<B, F> where B: Clone + 'static, F: 'static {
 }
 
 /// Interface of mpmc signal. This is what is directly exposed to users.
-pub struct MpmcSignal<B, F>(MpmcSignalRuntimeRef<B, F>);
+pub struct MpmcSignalSt<B, F>(MpmcSignalRuntimeRef<B, F>);
 
-impl<B, F> Clone for MpmcSignal<B, F> {
+impl<B, F> Clone for MpmcSignalSt<B, F> {
     fn clone(&self) -> Self {
-        MpmcSignal(self.0.clone())
+        MpmcSignalSt(self.0.clone())
     }
 }
 
-impl<B, F> Signal for MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
+impl<B, F> Signal for MpmcSignalSt<B, F> where B: Clone + 'static, F: 'static {
     type RuntimeRef = MpmcSignalRuntimeRef<B, F>;
     
     fn runtime(&self) -> MpmcSignalRuntimeRef<B, F> {
@@ -160,7 +160,7 @@ impl<B, F> Signal for MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
     }
 }
 
-impl<B, F> ValuedSignal for MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
+impl<B, F> ValuedSignal for MpmcSignalSt<B, F> where B: Clone + 'static, F: 'static {
     type Stored = B;
     
     fn last_value(&self) -> Option<B> {
@@ -170,16 +170,16 @@ impl<B, F> ValuedSignal for MpmcSignal<B, F> where B: Clone + 'static, F: 'stati
     }
 }
     
-impl<B, F> MpmcSignal<B, F> where B: Clone + 'static, F: 'static {
+impl<B, F> MpmcSignalSt<B, F> where B: Clone + 'static, F: 'static {
     /// Creates a new mpmc signal.
     pub fn new<A>(default: B, gather: F) -> Self where A: 'static, F: FnMut(A, &mut B) {
-        MpmcSignal(MpmcSignalRuntimeRef::new(default, gather))
+        MpmcSignalSt(MpmcSignalRuntimeRef::new(default, gather))
     }
 }
 
 /* Await */
 
-impl<B, F> ProcessSt for Await<MpmcSignal<B, F>> where B: Clone + 'static, F: 'static {
+impl<B, F> ProcessSt for Await<MpmcSignalSt<B, F>> where B: Clone + 'static, F: 'static {
     fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where C: ContinuationSt<Self::Value>
     {
@@ -196,7 +196,7 @@ impl<B, F> ProcessSt for Await<MpmcSignal<B, F>> where B: Clone + 'static, F: 's
     }
 }
 
-impl<B, F> ProcessMutSt for Await<MpmcSignal<B, F>> where B: Clone + 'static, F: 'static {
+impl<B, F> ProcessMutSt for Await<MpmcSignalSt<B, F>> where B: Clone + 'static, F: 'static {
     fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where Self: Sized, C: ContinuationSt<(Self, Self::Value)>
     {

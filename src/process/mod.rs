@@ -1,3 +1,6 @@
+//! Once a process is defined, it can be executed in the two kinds of runtime
+//! as long as it's `Send` and `Sync`.
+
 mod execute_process;
 mod process_mut;
 pub use self::execute_process::{execute_process, execute_process_parallel};
@@ -12,8 +15,9 @@ mod then;
 mod if_else;
 mod join;
 mod join_p;
-mod while_proc;
 mod loop_proc;
+mod repeat;
+mod while_proc;
 pub use self::value::{value_proc, Value};
 pub use self::pause::Pause;
 pub use self::map::Map;
@@ -22,8 +26,9 @@ pub use self::and_then::AndThen;
 pub use self::then::Then;
 pub use self::if_else::IfElse;
 pub use self::join::Join;
-pub use self::while_proc::{While, LoopStatus};
 pub use self::loop_proc::Loop;
+pub use self::repeat::Repeat;
+pub use self::while_proc::{While, LoopStatus};
 
 use runtime::{SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};

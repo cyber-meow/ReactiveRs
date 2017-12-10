@@ -161,15 +161,15 @@ impl<B, F> MpmcSignalRuntimeRef<B, F>
 }
 
 /// Interface of mpmc signal. This is what is directly exposed to users.
-pub struct MpmcSignal<B, F>(MpmcSignalRuntimeRef<B, F>);
+pub struct MpmcSignalPl<B, F>(MpmcSignalRuntimeRef<B, F>);
 
-impl<B, F> Clone for MpmcSignal<B, F> {
+impl<B, F> Clone for MpmcSignalPl<B, F> {
     fn clone(&self) -> Self {
-        MpmcSignal(self.0.clone())
+        MpmcSignalPl(self.0.clone())
     }
 }
 
-impl<B, F> Signal for MpmcSignal<B, F>
+impl<B, F> Signal for MpmcSignalPl<B, F>
     where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
 {
     type RuntimeRef = MpmcSignalRuntimeRef<B, F>;
@@ -179,7 +179,7 @@ impl<B, F> Signal for MpmcSignal<B, F>
     }
 }
 
-impl<B, F> ValuedSignal for MpmcSignal<B, F>
+impl<B, F> ValuedSignal for MpmcSignalPl<B, F>
     where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
 {
     type Stored = B;
@@ -191,22 +191,22 @@ impl<B, F> ValuedSignal for MpmcSignal<B, F>
     }
 }
 
-impl <B, F> MpmcSignal<B, F> where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static {
+impl <B, F> MpmcSignalPl<B, F> where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static {
     /// Creates a new mpmc signal.
     pub fn new<A>(default: B, gather: F) -> Self
         where A: Send + Sync + 'static, F: FnMut(A, &mut B)
     {
-        MpmcSignal(MpmcSignalRuntimeRef::new(default, gather))
+        MpmcSignalPl(MpmcSignalRuntimeRef::new(default, gather))
     }
 }
 
 /* Await */
 
-impl<B, F> ConstraintOnValue for Await<MpmcSignal<B, F>> where B: Send + Sync {
+impl<B, F> ConstraintOnValue for Await<MpmcSignalPl<B, F>> where B: Send + Sync {
     type T = B;
 }
 
-impl<B, F> ProcessPl for Await<MpmcSignal<B, F>>
+impl<B, F> ProcessPl for Await<MpmcSignalPl<B, F>>
     where B: Clone + Send + Sync + 'static, F: 'static + Send + Sync
 {
     fn call<C>(self, runtime: &mut ParallelRuntime, next: C)
@@ -223,7 +223,7 @@ impl<B, F> ProcessPl for Await<MpmcSignal<B, F>>
     }
 }
 
-impl<B, F> ProcessMutPl for Await<MpmcSignal<B, F>>
+impl<B, F> ProcessMutPl for Await<MpmcSignalPl<B, F>>
     where B: Clone + Send + Sync + 'static, F: 'static + Send + Sync
 {
     fn call_mut<C>(self, runtime: &mut ParallelRuntime, next: C)

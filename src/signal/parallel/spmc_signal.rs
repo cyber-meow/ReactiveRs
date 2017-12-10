@@ -145,15 +145,15 @@ impl<V> SpmcSignalRuntimeRef<V> where V: Clone + Send + Sync + 'static {
 }
 
 /// Interface of mpmc signal. This is what is directly exposed to users.
-pub struct SpmcSignal<V>(SpmcSignalRuntimeRef<V>);
+pub struct SpmcSignalPl<V>(SpmcSignalRuntimeRef<V>);
 
-impl<V> Clone for SpmcSignal<V> {
+impl<V> Clone for SpmcSignalPl<V> {
     fn clone(&self) -> Self {
-        SpmcSignal(self.0.clone())
+        SpmcSignalPl(self.0.clone())
     }
 }
 
-impl<V> Signal for SpmcSignal<V> where V: Clone + Send + Sync + 'static {
+impl<V> Signal for SpmcSignalPl<V> where V: Clone + Send + Sync + 'static {
     type RuntimeRef = SpmcSignalRuntimeRef<V>;
     
     fn runtime(&self) -> SpmcSignalRuntimeRef<V> {
@@ -161,7 +161,7 @@ impl<V> Signal for SpmcSignal<V> where V: Clone + Send + Sync + 'static {
     }
 }
 
-impl<V> ValuedSignal for SpmcSignal<V> where V: Clone + Send + Sync + 'static {
+impl<V> ValuedSignal for SpmcSignalPl<V> where V: Clone + Send + Sync + 'static {
     type Stored = V;
 
     fn last_value(&self) -> Option<V> {
@@ -171,20 +171,20 @@ impl<V> ValuedSignal for SpmcSignal<V> where V: Clone + Send + Sync + 'static {
     }
 }
 
-impl <V> SpmcSignal<V> where V: Clone + Send + Sync + 'static {
+impl<V> SpmcSignalPl<V> where V: Clone + Send + Sync + 'static {
     /// Creates a new spmc signal.
-    pub fn new<A>() -> Self {
-        SpmcSignal(SpmcSignalRuntimeRef::new())
+    pub fn new() -> Self {
+        SpmcSignalPl(SpmcSignalRuntimeRef::new())
     }
 }
 
 /* Await */
 
-impl<V> ConstraintOnValue for Await<SpmcSignal<V>> where V: Send + Sync {
+impl<V> ConstraintOnValue for Await<SpmcSignalPl<V>> where V: Send + Sync {
     type T = V;
 }
 
-impl<V> ProcessPl for Await<SpmcSignal<V>> where V: Clone + Send + Sync + 'static {
+impl<V> ProcessPl for Await<SpmcSignalPl<V>> where V: Clone + Send + Sync + 'static {
     fn call<C>(self, runtime: &mut ParallelRuntime, next: C)
         where C: ContinuationPl<Self::Value>
     {
@@ -195,7 +195,7 @@ impl<V> ProcessPl for Await<SpmcSignal<V>> where V: Clone + Send + Sync + 'stati
     }
 }
 
-impl<V> ProcessMutPl for Await<SpmcSignal<V>> where V: Clone + Send + Sync + 'static {
+impl<V> ProcessMutPl for Await<SpmcSignalPl<V>> where V: Clone + Send + Sync + 'static {
     fn call_mut<C>(self, runtime: &mut ParallelRuntime, next: C)
         where Self: Sized, C: ContinuationPl<(Self, Self::Value)>
     {

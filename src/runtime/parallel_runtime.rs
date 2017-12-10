@@ -183,6 +183,7 @@ impl ParallelRuntime {
                     RuntimeStatus::Undetermined(k)
                         if k == self.num_threads_total - 1 =>
                     {
+                        self.reset_working_pool();
                         *runtime_status = RuntimeStatus::Finished;
                         cvar.notify_all();
                         // If this is `true` the program hangs. I think this should
@@ -215,12 +216,7 @@ impl ParallelRuntime {
                 let mut runtime_status = lock.lock().unwrap();
                 match *runtime_status {
                     RuntimeStatus::Undetermined(_) => {
-                        let mut working_pool = self.working_pool.lock().unwrap();
-                        debug_assert!(working_pool.is_empty());
-                        *working_pool = (0..self.num_threads_total).collect();
-                        let mut eoi_working_pool = self.eoi_working_pool.lock().unwrap();
-                        debug_assert!(eoi_working_pool.is_empty());
-                        *eoi_working_pool = (0..self.num_threads_total).collect();
+                        self.reset_working_pool();
                         *runtime_status = RuntimeStatus::WorkRemained;
                         cvar.notify_all();
                     },
@@ -233,5 +229,15 @@ impl ParallelRuntime {
             }
             return true;
         }
+    }
+
+    /// Add all the workers to the empty working pool, preparing for the next instant.
+    fn reset_working_pool(&self) {
+        let mut working_pool = self.working_pool.lock().unwrap();
+        debug_assert!(working_pool.is_empty());
+        *working_pool = (0..self.num_threads_total).collect();
+        let mut eoi_working_pool = self.eoi_working_pool.lock().unwrap();
+        debug_assert!(eoi_working_pool.is_empty());
+        *eoi_working_pool = (0..self.num_threads_total).collect();
     }
 }

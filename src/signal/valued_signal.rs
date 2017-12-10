@@ -14,8 +14,11 @@ pub trait ValuedSignal: Signal {
         Emit { signal: self.clone(), emitted }
     }
 
-    /// Waits the signal to be emitted, gets its content and
-    /// terminates at the following instant.
+    /// Waits the signal to be emitted and gets its content.  
+    /// For a single-producer signal the process terminates immediately and for a
+    /// multi-producer signal it terminates at the following instant. 
+    /// For example, when `s1` is a spmc signal and when `s2` is a mpmc signal,
+    /// `s1.await().pause()` is semantically equivalent to `s2.await()`.
     fn await(&self) -> Await<Self> where Self: Sized {
         Await(self.clone())
     }
@@ -27,6 +30,7 @@ pub trait ValuedSignal: Signal {
 
 /* Emit */
 
+/// Process that represents an emission of a signal with some value.
 pub struct Emit<S, A> {
     pub(crate) signal: S,
     pub(crate) emitted: A,
@@ -101,6 +105,7 @@ impl<S, A> ProcessMutPl for Emit<S, A>
 
 /* Await */
 
+/// Process awaiting a signal to be emitted to fetch its value.
 pub struct Await<S>(pub(crate) S);
 
 impl<S> Process for Await<S> where S: ValuedSignal {

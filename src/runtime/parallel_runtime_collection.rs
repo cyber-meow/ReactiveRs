@@ -1,6 +1,9 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, Barrier, Condvar};
 use std::sync::atomic::AtomicUsize;
+use std::panic;
+use std::process;
+
 use crossbeam;
 use crossbeam::sync::chase_lev;
 use rand::{weak_rng, Rng};
@@ -60,7 +63,20 @@ impl ParallelRuntimeCollection {
         ParallelRuntimeCollection { runtimes }
     }
 
+    /// Execute in parallel all the runtimes contained in the collection, with
+    /// one thread for each runtime.  
+    /// The whole program is aborted when some child thread panics.
+    /// Maybe there's a way to smartly deal with panics of child threads but
+    /// I am not particularly working on it.
     pub fn execute(&mut self) {
+        // The function `take_handler` returns the default handler in case when a
+        // custom one is not set.
+        let orig_handler = panic::take_hook();
+        panic::set_hook(Box::new(move |panic_info| {
+            // Invokes the default handler and exit the process.
+            orig_handler(panic_info);
+            process::exit(1);
+        }));
         crossbeam::scope(|scope| {
             for runtime in self.runtimes.iter_mut() {
                 scope.spawn(move || runtime.execute());

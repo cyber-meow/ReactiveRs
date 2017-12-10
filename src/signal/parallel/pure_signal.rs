@@ -109,9 +109,9 @@ impl PureSignalRuntimeRef {
 
 /// Interface of pure signal, to be used by the user.
 #[derive(Clone)]
-pub struct PureSignalImpl(PureSignalRuntimeRef);
+pub struct PureSignalPl(PureSignalRuntimeRef);
 
-impl Signal for PureSignalImpl {
+impl Signal for PureSignalPl {
     type RuntimeRef = PureSignalRuntimeRef;
     
     fn runtime(&self) -> PureSignalRuntimeRef {
@@ -119,20 +119,20 @@ impl Signal for PureSignalImpl {
     }
 }
 
-impl PureSignal for PureSignalImpl {
+impl PureSignal for PureSignalPl {
     /// Creates a new pure signal.
     fn new() -> Self {
-        PureSignalImpl(PureSignalRuntimeRef::new())
+        PureSignalPl(PureSignalRuntimeRef::new())
     }
 }
 
 /* Emit */
 
-impl ConstraintOnValue for Emit<PureSignalImpl> {
+impl ConstraintOnValue for Emit<PureSignalPl> {
     type T = ();
 }
 
-impl ProcessPl for Emit<PureSignalImpl> {
+impl ProcessPl for Emit<PureSignalPl> {
     fn call<C>(self, runtime: &mut ParallelRuntime, next: C)
         where C: ContinuationPl<Self::Value>
     {
@@ -141,7 +141,7 @@ impl ProcessPl for Emit<PureSignalImpl> {
     }
 }
 
-impl ProcessMutPl for Emit<PureSignalImpl> {
+impl ProcessMutPl for Emit<PureSignalPl> {
     fn call_mut<C>(self, runtime: &mut ParallelRuntime, next: C)
         where Self: Sized, C: ContinuationPl<(Self, Self::Value)>
     {
