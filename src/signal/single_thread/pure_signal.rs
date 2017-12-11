@@ -4,7 +4,6 @@ use std::cell::RefCell;
 use runtime::SingleThreadRuntime;
 use continuation::ContinuationSt;
 use process::{ProcessSt, ProcessMutSt};
-
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefSt};
 use signal::pure_signal::{PureSignal, Emit};
@@ -98,9 +97,9 @@ impl PureSignalRuntimeRef {
 
 /// Interface of pure signal, to be used by the user.
 #[derive(Clone)]
-pub struct PureSignalImpl(PureSignalRuntimeRef);
+pub struct PureSignalSt(PureSignalRuntimeRef);
 
-impl Signal for PureSignalImpl {
+impl Signal for PureSignalSt {
     type RuntimeRef = PureSignalRuntimeRef;
 
     fn runtime(&self) -> PureSignalRuntimeRef {
@@ -108,15 +107,15 @@ impl Signal for PureSignalImpl {
     }
 }
 
-impl PureSignal for PureSignalImpl {
+impl PureSignal for PureSignalSt {
     fn new() -> Self {
-        PureSignalImpl(PureSignalRuntimeRef::new())
+        PureSignalSt(PureSignalRuntimeRef::new())
     }
 }
 
 /* Emit */
 
-impl ProcessSt for Emit<PureSignalImpl> {
+impl ProcessSt for Emit<PureSignalSt> {
     fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where C: ContinuationSt<Self::Value>
     {
@@ -125,7 +124,7 @@ impl ProcessSt for Emit<PureSignalImpl> {
     }
 }
 
-impl ProcessMutSt for Emit<PureSignalImpl> {
+impl ProcessMutSt for Emit<PureSignalSt> {
     fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where Self: Sized, C: ContinuationSt<(Self, Self::Value)>
     {

@@ -8,46 +8,44 @@ use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefPl};
 use signal::valued_signal::{ValuedSignal, MpSignal, CanEmit, GetValue};
 
 /// A shared pointer to a signal runtime.
-pub struct MpmcSignalRuntimeRef<B, F> {
-    runtime: Arc<MpmcSignalRuntime<B, F>>,
+pub struct MpscSignalRuntimeRef<B, D, F> {
+    runtime: Arc<MpscSignalRuntime<B, D, F>>,
 }
 
-impl<B, F> Clone for MpmcSignalRuntimeRef<B, F> {
+impl<B, D, F> Clone for MpscSignalRuntimeRef<B, D, F> {
     fn clone(&self) -> Self { 
-        MpmcSignalRuntimeRef { runtime: self.runtime.clone() }
+        MpscSignalRuntimeRef { runtime: self.runtime.clone() }
     }
 }
 
-/// Runtime for multi-producer, multi-consumer signals.
-struct MpmcSignalRuntime<B, F> {
+/// Runtime for multi-producer, single-consumer signals.  
+/// Since we're not always able to clone the default value, we need a function
+/// that produces the default value each time when it's called.
+struct MpscSignalRuntime<B, D, F> {
     emitted: Mutex<bool>,
-    default_value: B,
+    get_default: D,
     gather: Mutex<F>,
-    value: Mutex<B>,
-    last_value: Mutex<B>,
-    last_value_updated: Mutex<bool>,
+    value: Mutex<Option<B>>,
     await_works: TreiberStack<Box<ContinuationPl<()>>>,
     present_works: TreiberStack<Box<ContinuationPl<()>>>,
 }
 
-impl<B, F> MpmcSignalRuntime<B, F> where B: Clone {
+impl<B, D, F> MpscSignalRuntime<B, D, F> where D: Fn() -> B {
     /// Returns a new instance of SignalRuntime.
-    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
-        MpmcSignalRuntime {
+    fn new<A>(get_default: D, gather: F) -> Self where F: FnMut(A, &mut B) {
+        MpscSignalRuntime {
             emitted: Mutex::new(false),
-            default_value: default.clone(),
+            value: Mutex::new(Some(get_default())),
+            get_default: get_default,
             gather: Mutex::new(gather),
-            value: Mutex::new(default.clone()),
-            last_value: Mutex::new(default),
-            last_value_updated: Mutex::new(false),
             await_works: TreiberStack::new(),
             present_works: TreiberStack::new(),
         }
     }
 }
 
-impl<B, F> SignalRuntimeRefBase<ParallelRuntime> for MpmcSignalRuntimeRef<B, F>
-    where B: Clone + 'static, F: 'static
+impl<B, D, F> SignalRuntimeRefBase<ParallelRuntime> for MpscSignalRuntimeRef<B, D, F>
+    where B: 'static, D: Fn() -> B + 'static, F: 'static
 {
     /// Returns a bool to indicate if the signal was emitted or not on the current instant.
     fn is_emitted(&self) -> bool {
@@ -60,8 +58,7 @@ impl<B, F> SignalRuntimeRefBase<ParallelRuntime> for MpmcSignalRuntimeRef<B, F>
         if *is_emitted {
             *is_emitted = false;
             drop(is_emitted);
-            *self.runtime.value.lock().unwrap() = self.runtime.default_value.clone();
-            *self.runtime.last_value_updated.lock().unwrap() = false;
+            *self.runtime.value.lock().unwrap() = Some((self.runtime.get_default)());
         }
     }
 
@@ -77,8 +74,11 @@ impl<B, F> SignalRuntimeRefBase<ParallelRuntime> for MpmcSignalRuntimeRef<B, F>
     }
 }
 
-impl<B, F> SignalRuntimeRefPl for MpmcSignalRuntimeRef<B, F>
-    where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
+
+impl<B, D, F> SignalRuntimeRefPl for MpscSignalRuntimeRef<B, D, F>
+    where B: Send + Sync + 'static,
+          D: Fn() -> B + Send + Sync + 'static,
+          F: Send + Sync + 'static,
 {
     /// Calls `c` at the first cycle where the signal is present.
     fn on_signal<C>(&mut self, runtime: &mut ParallelRuntime, c: C)
@@ -110,17 +110,20 @@ impl<B, F> SignalRuntimeRefPl for MpmcSignalRuntimeRef<B, F>
     }
 }
 
-impl<A, B, F> CanEmit<ParallelRuntime, A> for MpmcSignalRuntimeRef<B, F>
-    where A: Send + Sync + 'static,
-          B: Clone + Send + Sync + 'static,
-          F: FnMut(A, &mut B) + Send + Sync + 'static
+impl<A, B, D, F> CanEmit<ParallelRuntime, A> for MpscSignalRuntimeRef<B, D, F>
+    where A: 'static,
+          B: Send + Sync + 'static,
+          D: Fn() -> B + Send + Sync + 'static,
+          F: FnMut(A, &mut B) + Send + Sync + 'static,
 {
     fn emit(&mut self, runtime: &mut ParallelRuntime, emitted: A) {
         *self.runtime.emitted.lock().unwrap() = true;
         {
-            let mut v = self.runtime.value.lock().unwrap();
             let gather = &mut *self.runtime.gather.lock().unwrap();
-            gather(emitted, &mut v);
+            match self.runtime.value.lock().unwrap().as_mut() {
+                Some(v) => gather(emitted, v),
+                None => assert!(false),
+            }
         }
         while let Some(c) = self.runtime.await_works.try_pop() {
             runtime.decr_await_counter();
@@ -128,90 +131,81 @@ impl<A, B, F> CanEmit<ParallelRuntime, A> for MpmcSignalRuntimeRef<B, F>
         }
         self.execute_present_works(runtime);
         runtime.emit_signal(Box::new(self.clone()));
-        let signal_ref = self.clone();
-        let update_last_value = move |_: &mut ParallelRuntime, ()| {
-            let mut updated = signal_ref.runtime.last_value_updated.lock().unwrap();
-            if !*updated {
-                *updated = true;
-                drop(updated);
-                *signal_ref.runtime.last_value.lock().unwrap() = signal_ref.get_value();
-            }
-        };
-        runtime.on_end_of_instant(Box::new(update_last_value));
     }
 }
 
-impl<B, F> GetValue<B> for MpmcSignalRuntimeRef<B, F> where B: Clone {
+impl<B, D, F> GetValue<B> for MpscSignalRuntimeRef<B, D, F> {
     /// Returns the value of the signal for the current instant.
-    /// The returned value is cloned and can thus be used directly.
+    /// This function can only be called once at each instant.
     fn get_value(&self) -> B {
-        self.runtime.value.lock().unwrap().clone()
+        self.runtime.value.lock().unwrap().take().expect(
+            "Trying to get the value of a mpsc signal more than once inside an instant.")
     }
 }
 
-impl<B, F> MpmcSignalRuntimeRef<B, F>
-    where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
+impl<B, D, F> MpscSignalRuntimeRef<B, D, F>
+    where B: Send + Sync + 'static,
+          D: Fn() -> B + Send + Sync + 'static,
+          F: Send + Sync + 'static,
 {
     /// Returns a new instance of SignalRuntimeRef.
-    fn new<A>(default: B, gather: F) -> Self where F: FnMut(A, &mut B) {
-        MpmcSignalRuntimeRef {
-            runtime: Arc::new(MpmcSignalRuntime::new(default, gather)),
+    fn new<A>(get_default: D, gather: F) -> Self where F: FnMut(A, &mut B) {
+        MpscSignalRuntimeRef {
+            runtime: Arc::new(MpscSignalRuntime::new(get_default, gather)),
         }
     }
 }
 
-/// Interface of mpmc signal. This is what is directly exposed to users.
-pub struct MpmcSignalPl<B, F>(MpmcSignalRuntimeRef<B, F>);
+/// Interface of mpsc signal. This is what is directly exposed to users.
+pub struct MpscSignalPl<B, D, F>(MpscSignalRuntimeRef<B, D, F>);
 
-impl<B, F> Clone for MpmcSignalPl<B, F> {
+impl<B, D, F> Clone for MpscSignalPl<B, D, F> {
     fn clone(&self) -> Self {
-        MpmcSignalPl(self.0.clone())
+        MpscSignalPl(self.0.clone())
     }
 }
 
-impl<B, F> Signal for MpmcSignalPl<B, F>
-    where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
+impl<B, D, F> Signal for MpscSignalPl<B, D, F>
+    where B: Send + Sync + 'static,
+          D: Fn() -> B + Send + Sync + 'static,
+          F: Send + Sync + 'static,
 {
-    type RuntimeRef = MpmcSignalRuntimeRef<B, F>;
+    type RuntimeRef = MpscSignalRuntimeRef<B, D, F>;
     
-    fn runtime(&self) -> MpmcSignalRuntimeRef<B, F> {
+    fn runtime(&self) -> MpscSignalRuntimeRef<B, D, F> {
         self.0.clone()
     }
 }
 
-impl<B, F> ValuedSignal for MpmcSignalPl<B, F>
-    where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
+impl<B, D, F> ValuedSignal for MpscSignalPl<B, D, F>
+    where B: Send + Sync + 'static,
+          D: Fn() -> B + Send + Sync + 'static,
+          F: Send + Sync + 'static,
 {
     type Stored = B;
     type SigType = MpSignal;
 }
-
-impl<B, F> MpmcSignalPl<B, F> where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static {
-    /// Creates a new mpmc signal.
-    pub fn new<A>(default: B, gather: F) -> Self
-        where A: Send + Sync + 'static, F: FnMut(A, &mut B)
-    {
-        MpmcSignalPl(MpmcSignalRuntimeRef::new(default, gather))
-    }
     
-    /// Returns the last value associated to the signal when it was emitted.
-    /// Evaluates to the the default value before the first emission.
-    pub fn last_value(&self) -> B {
-        let r = self.runtime();
-        let last_v = r.runtime.last_value.lock().unwrap();
-        last_v.clone()
+impl<B, D, F> MpscSignalPl<B, D, F>
+    where B: Send + Sync + 'static,
+          D: Fn() -> B + Send + Sync + 'static,
+          F: Send + Sync + 'static,
+{
+    /// Creates a new mpmc signal.
+    pub fn new<A>(get_default: D, gather: F) -> Self where A: 'static, F: FnMut(A, &mut B) {
+        MpscSignalPl(MpscSignalRuntimeRef::new(get_default, gather))
     }
 }
 
-impl MpmcSignalPl<(), ()> {
-    /// Creates a new mpmc signal with the default combination function, which simply
+impl MpscSignalPl<(), (), ()> {
+    /// Creates a new mpsc signal with the default combination function, which simply
     /// collects all emitted values in a vector.
-    pub fn default<A>() -> MpmcSignalPl<Vec<A>, fn(A, &mut Vec<A>)>
-        where A: Clone + Send + Sync + 'static
+    pub fn default<A>() -> MpscSignalPl<Vec<A>, fn() -> Vec<A>, fn(A, &mut Vec<A>)>
+        where A: Send + Sync + 'static
     {
         fn gather<A>(x: A, xs: &mut Vec<A>) {
             xs.push(x);
         }
-        MpmcSignalPl::new(Vec::new(), gather)
+        MpscSignalPl::new(Vec::new, gather)
     }
 }

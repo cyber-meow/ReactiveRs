@@ -1,4 +1,8 @@
 mod pure_signal;
 mod mpmc_signal;
-pub use self::pure_signal::PureSignalImpl;
-pub use self::mpmc_signal::MpmcSignalImpl;
+mod mpsc_signal;
+mod spmc_signal;
+pub use self::pure_signal::PureSignalPl;
+pub use self::mpmc_signal::MpmcSignalPl;
+pub use self::mpsc_signal::MpscSignalPl;
+pub use self::spmc_signal::SpmcSignalPl;

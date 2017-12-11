@@ -1,12 +1,25 @@
-//! Inter-process communicatin depends on the use of signals.
-//! Several types of signals are defined.
+//! Inter-process communication depends on the use of signals.
+//! 
+//! Four kinds of signals are defined: `PureSignal`, `MpmcSignal`,
+//! `MpscSignal` and `SpmcSignal`.
+//! Except for `PureSignal`, all signals are emitted with some value and
+//! store some value which can be communicated.
 //!
-//! In particular, the signals for the non-parallel and the parallel version
-//! of the library are different, so the user must decide which kind of
-//! signal (the parallel or no-parallel ones) to use from the beginning.
+//! We should notice that the implementaion for `MpscSignal` and `SpmcSignal`
+//! may not be very satisfactory. We can imagine having some sender or
+//! receiver for a signal and it is consumed once used.
+//! However, this means that the signal can only be emitted or awaited in
+//! one place in the code, and this is not what I look for.
+//! The goal is to force the signal to be emitted or consumed only once at
+//! each instant, but not only once in the whole program. Since I have no idea
+//! how this can be down at compile time, what I did finally is to check this
+//! dynamically. The program panics when some undesired behavior is detected.
 //!
-//! I would love to have something like in the case of processes: the real
-//! behavior of the signal is only determined when it's used with some
+//! On the other hand, the signals used for the non-parallel and the parallel
+//! version of the library are different, so the user must decide which sort
+//! of signal (the parallel or no-parallel ones) to use from the beginning.
+//! I would love to have something like in the case of processes: the real 
+//! behavior of the signal is only determined when it's associated with some
 //! particular runtime, but I didn't find a way to do this.
 
 pub(crate) mod signal_runtime;
@@ -17,9 +30,9 @@ pub use self::await_immediate::AwaitImmediate;
 pub use self::present_else::PresentElse;
 
 pub mod pure_signal;
-pub mod mpmc_signal;
+pub mod valued_signal;
 pub use self::pure_signal::PureSignal;
-pub use self::mpmc_signal::MpmcSignal;
+pub use self::valued_signal::ValuedSignal;
 
 pub mod parallel;
 pub mod single_thread;
