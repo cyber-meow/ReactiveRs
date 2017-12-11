@@ -4,7 +4,6 @@ use crossbeam::sync::TreiberStack;
 use runtime::ParallelRuntime;
 use continuation::ContinuationPl;
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
-
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefPl};
 use signal::pure_signal::{PureSignal, Emit};

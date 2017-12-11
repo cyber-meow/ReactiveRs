@@ -4,7 +4,6 @@ use std::cell::RefCell;
 use runtime::SingleThreadRuntime;
 use continuation::ContinuationSt;
 use process::{ProcessSt, ProcessMutSt};
-
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefSt};
 use signal::pure_signal::{PureSignal, Emit};

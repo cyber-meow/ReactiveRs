@@ -3,11 +3,9 @@ use crossbeam::sync::TreiberStack;
 
 use runtime::ParallelRuntime;
 use continuation::ContinuationPl;
-use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
-
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefPl};
-use signal::valued_signal::{ValuedSignal, CanEmit, Await};
+use signal::valued_signal::{ValuedSignal, SpSignal, CanEmit, GetValue};
 
 /// A shared pointer to a signal runtime.
 pub struct SpmcSignalRuntimeRef<V> {
@@ -131,12 +129,7 @@ impl<V> CanEmit<ParallelRuntime, V> for SpmcSignalRuntimeRef<V>
     }
 }
 
-impl<V> SpmcSignalRuntimeRef<V> where V: Clone + Send + Sync + 'static {
-    /// Returns a new instance of SignalRuntimeRef.
-    fn new() -> Self {
-        SpmcSignalRuntimeRef { runtime: Arc::new(SpmcSignalRuntime::new()) }
-    }
-
+impl<V> GetValue<V> for SpmcSignalRuntimeRef<V> where V: Clone {
     /// Returns the value of the signal for the current instant.
     /// The returned value is cloned and can thus be used directly.
     fn get_value(&self) -> V {
@@ -144,7 +137,14 @@ impl<V> SpmcSignalRuntimeRef<V> where V: Clone + Send + Sync + 'static {
     }
 }
 
-/// Interface of mpmc signal. This is what is directly exposed to users.
+impl<V> SpmcSignalRuntimeRef<V> where V: Clone + Send + Sync + 'static {
+    /// Returns a new instance of SignalRuntimeRef.
+    fn new() -> Self {
+        SpmcSignalRuntimeRef { runtime: Arc::new(SpmcSignalRuntime::new()) }
+    }
+}
+
+/// Interface of spmc signal. This is what is directly exposed to users.
 pub struct SpmcSignalPl<V>(SpmcSignalRuntimeRef<V>);
 
 impl<V> Clone for SpmcSignalPl<V> {
@@ -163,12 +163,7 @@ impl<V> Signal for SpmcSignalPl<V> where V: Clone + Send + Sync + 'static {
 
 impl<V> ValuedSignal for SpmcSignalPl<V> where V: Clone + Send + Sync + 'static {
     type Stored = V;
-
-    fn last_value(&self) -> Option<V> {
-        let r = self.runtime();
-        let last_v = r.runtime.last_value.lock().unwrap();
-        last_v.clone()
-    }
+    type SigType = SpSignal;
 }
 
 impl<V> SpmcSignalPl<V> where V: Clone + Send + Sync + 'static {
@@ -176,34 +171,12 @@ impl<V> SpmcSignalPl<V> where V: Clone + Send + Sync + 'static {
     pub fn new() -> Self {
         SpmcSignalPl(SpmcSignalRuntimeRef::new())
     }
-}
 
-/* Await */
-
-impl<V> ConstraintOnValue for Await<SpmcSignalPl<V>> where V: Send + Sync {
-    type T = V;
-}
-
-impl<V> ProcessPl for Await<SpmcSignalPl<V>> where V: Clone + Send + Sync + 'static {
-    fn call<C>(self, runtime: &mut ParallelRuntime, next: C)
-        where C: ContinuationPl<Self::Value>
-    {
-        let signal_runtime = self.0.runtime();
-        self.0.runtime().on_signal(
-            runtime,
-            move |r: &mut ParallelRuntime, ()| next.call(r, signal_runtime.get_value()));
-    }
-}
-
-impl<V> ProcessMutPl for Await<SpmcSignalPl<V>> where V: Clone + Send + Sync + 'static {
-    fn call_mut<C>(self, runtime: &mut ParallelRuntime, next: C)
-        where Self: Sized, C: ContinuationPl<(Self, Self::Value)>
-    {
-        let signal_runtime = self.0.runtime();
-        let mut signal_runtime2 = self.0.runtime();
-        signal_runtime2.on_signal(
-            runtime,
-            move |r: &mut ParallelRuntime, ()|
-                next.call(r, (self, signal_runtime.get_value())));
+    /// Returns the last value associated to the signal when it was emitted.
+    /// Evaluates to the `None` before the first emission.
+    pub fn last_value(&self) -> Option<V> {
+        let r = self.runtime();
+        let last_v = r.runtime.last_value.lock().unwrap();
+        last_v.clone()
     }
 }

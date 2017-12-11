@@ -7,7 +7,6 @@ use reactive::signal::{Signal, PureSignal, ValuedSignal};
 use reactive::signal::single_thread::{PureSignalSt, MpmcSignalSt, SpmcSignalSt};
 use reactive::signal::parallel::{PureSignalPl, MpmcSignalPl, SpmcSignalPl};
 
-
 #[test]
 fn pure_signal_s () {
     let s = PureSignalSt::new();

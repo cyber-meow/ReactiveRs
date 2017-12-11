@@ -3,11 +3,9 @@ use std::cell::RefCell;
 
 use runtime::SingleThreadRuntime;
 use continuation::ContinuationSt;
-use process::{ProcessSt, ProcessMutSt};
-
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefSt};
-use signal::valued_signal::{ValuedSignal, CanEmit, Await};
+use signal::valued_signal::{ValuedSignal, MpSignal, CanEmit, GetValue};
 
 /// A shared pointer to a signal runtime.
 pub struct MpmcSignalRuntimeRef<B, F> {
@@ -26,7 +24,7 @@ struct MpmcSignalRuntime<B, F> {
     default_value: B,
     gather: RefCell<F>,
     value: RefCell<B>,
-    last_value: RefCell<Option<B>>,
+    last_value: RefCell<B>,
     last_value_updated: RefCell<bool>,
     await_works: RefCell<Vec<Box<ContinuationSt<()>>>>,
     present_works: RefCell<Vec<Box<ContinuationSt<()>>>>,
@@ -39,8 +37,8 @@ impl<B, F> MpmcSignalRuntime<B, F> where B: Clone {
             emitted: RefCell::new(false),
             default_value: default.clone(),
             gather: RefCell::new(gather),
-            value: RefCell::new(default),
-            last_value: RefCell::new(None),
+            value: RefCell::new(default.clone()),
+            last_value: RefCell::new(default),
             last_value_updated: RefCell::new(false),
             await_works: RefCell::new(Vec::new()),
             present_works: RefCell::new(Vec::new()),
@@ -120,11 +118,19 @@ impl<A, B, F> CanEmit<SingleThreadRuntime, A> for MpmcSignalRuntimeRef<B, F>
         let signal_ref = self.clone();
         let update_last_value = move |_: &mut SingleThreadRuntime, ()| {
             if !*signal_ref.runtime.last_value_updated.borrow() {
-                *signal_ref.runtime.last_value.borrow_mut() = Some(signal_ref.get_value());
+                *signal_ref.runtime.last_value.borrow_mut() = signal_ref.get_value();
                 *signal_ref.runtime.last_value_updated.borrow_mut() = true;
             }
         };
         runtime.on_end_of_instant(Box::new(update_last_value));
+    }
+}
+
+impl<B, F> GetValue<B> for MpmcSignalRuntimeRef<B, F> where B: Clone {
+    /// Returns the value of the signal for the current instant.
+    /// The returned value is cloned and can thus be used directly.
+    fn get_value(&self) -> B {
+        self.runtime.value.borrow().clone()
     }
 }
 
@@ -134,12 +140,6 @@ impl<B, F> MpmcSignalRuntimeRef<B, F> where B: Clone + 'static, F: 'static {
         MpmcSignalRuntimeRef {
             runtime: Rc::new(MpmcSignalRuntime::new(default, gather)),
         }
-    }
-
-    /// Returns the value of the signal for the current instant.
-    /// The returned value is cloned and can thus be used directly.
-    fn get_value(&self) -> B {
-        self.runtime.value.borrow().clone()
     }
 }
 
@@ -162,12 +162,7 @@ impl<B, F> Signal for MpmcSignalSt<B, F> where B: Clone + 'static, F: 'static {
 
 impl<B, F> ValuedSignal for MpmcSignalSt<B, F> where B: Clone + 'static, F: 'static {
     type Stored = B;
-    
-    fn last_value(&self) -> Option<B> {
-        let r = self.runtime();
-        let last_v = r.runtime.last_value.borrow();
-        last_v.clone()
-    }
+    type SigType = MpSignal;
 }
     
 impl<B, F> MpmcSignalSt<B, F> where B: Clone + 'static, F: 'static {
@@ -175,41 +170,12 @@ impl<B, F> MpmcSignalSt<B, F> where B: Clone + 'static, F: 'static {
     pub fn new<A>(default: B, gather: F) -> Self where A: 'static, F: FnMut(A, &mut B) {
         MpmcSignalSt(MpmcSignalRuntimeRef::new(default, gather))
     }
-}
 
-/* Await */
-
-impl<B, F> ProcessSt for Await<MpmcSignalSt<B, F>> where B: Clone + 'static, F: 'static {
-    fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
-        where C: ContinuationSt<Self::Value>
-    {
-        let signal_runtime = self.0.runtime();
-        let eoi_continuation = move |r: &mut SingleThreadRuntime, ()| {
-            let stored = signal_runtime.get_value();
-            r.on_next_instant(
-                Box::new(|r: &mut SingleThreadRuntime, ()| next.call(r, stored)));
-        };
-        self.0.runtime().on_signal(
-            runtime,
-            |r: &mut SingleThreadRuntime, ()|
-                r.on_end_of_instant(Box::new(eoi_continuation)));
-    }
-}
-
-impl<B, F> ProcessMutSt for Await<MpmcSignalSt<B, F>> where B: Clone + 'static, F: 'static {
-    fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
-        where Self: Sized, C: ContinuationSt<(Self, Self::Value)>
-    {
-        let signal_runtime = self.0.runtime();
-        let mut signal_runtime2 = self.0.runtime();
-        let eoi_continuation = move |r: &mut SingleThreadRuntime, ()| {
-            let stored = signal_runtime.get_value();
-            r.on_next_instant(
-                Box::new(|r: &mut SingleThreadRuntime, ()| next.call(r, (self, stored))));
-        };
-        signal_runtime2.on_signal(
-            runtime,
-            |r: &mut SingleThreadRuntime, ()|
-                r.on_end_of_instant(Box::new(eoi_continuation)));
+    /// Returns the last value associated to the signal when it was emitted.
+    /// Evaluates to the `None` before the first emission.
+    pub fn last_value(&self) -> B {
+        let r = self.runtime();
+        let last_v = r.runtime.last_value.borrow();
+        last_v.clone()
     }
 }

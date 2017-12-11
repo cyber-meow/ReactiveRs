@@ -3,11 +3,9 @@ use std::cell::RefCell;
 
 use runtime::SingleThreadRuntime;
 use continuation::ContinuationSt;
-use process::{ProcessSt, ProcessMutSt};
-
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefSt};
-use signal::valued_signal::{ValuedSignal, CanEmit, Await};
+use signal::valued_signal::{ValuedSignal, SpSignal, CanEmit, GetValue};
 
 /// A shared pointer to a signal runtime.
 pub struct SpmcSignalRuntimeRef<V> {
@@ -113,16 +111,18 @@ impl<V> CanEmit<SingleThreadRuntime, V> for SpmcSignalRuntimeRef<V> where V: Clo
     }
 }
 
-impl<V> SpmcSignalRuntimeRef<V> where V: Clone + 'static {
-    /// Returns a new instance of SignalRuntimeRef.
-    fn new() -> Self {
-        SpmcSignalRuntimeRef { runtime: Rc::new(SpmcSignalRuntime::new()) }
-    }
-
+impl<V> GetValue<V> for SpmcSignalRuntimeRef<V> where V: Clone {
     /// Returns the value of the signal for the current instant.
     /// The returned value is cloned and can thus be used directly.
     fn get_value(&self) -> V {
         self.runtime.value.borrow().clone().unwrap()
+    }
+}
+
+impl<V> SpmcSignalRuntimeRef<V> where V: Clone + 'static {
+    /// Returns a new instance of SignalRuntimeRef.
+    fn new() -> Self {
+        SpmcSignalRuntimeRef { runtime: Rc::new(SpmcSignalRuntime::new()) }
     }
 }
 
@@ -145,12 +145,7 @@ impl<V> Signal for SpmcSignalSt<V> where V: Clone + 'static {
 
 impl<V> ValuedSignal for SpmcSignalSt<V> where V: Clone + 'static {
     type Stored = V;
- 
-    fn last_value(&self) -> Option<V> {
-        let r = self.runtime();
-        let last_v = r.runtime.last_value.borrow();
-        last_v.clone()
-    }
+    type SigType = SpSignal;
 }
 
 impl<V> SpmcSignalSt<V> where V: Clone + 'static {
@@ -158,10 +153,19 @@ impl<V> SpmcSignalSt<V> where V: Clone + 'static {
     pub fn new() -> Self {
         SpmcSignalSt(SpmcSignalRuntimeRef::new())
     }
+    
+    /// Returns the last value associated to the signal when it was emitted.
+    /// Evaluates to the `None` before the first emission.
+    pub fn last_value(&self) -> Option<V> {
+        let r = self.runtime();
+        let last_v = r.runtime.last_value.borrow();
+        last_v.clone()
+    }
 }
 
 /* Await */
 
+/*
 impl<V> ProcessSt for Await<SpmcSignalSt<V>> where V: Clone + 'static {
     fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
         where C: ContinuationSt<Self::Value>
@@ -184,4 +188,4 @@ impl<V> ProcessMutSt for Await<SpmcSignalSt<V>> where V: Clone + 'static {
             move |r: &mut SingleThreadRuntime, ()|
                 next.call(r, (self, signal_runtime.get_value())));
     }
-}
+}*/

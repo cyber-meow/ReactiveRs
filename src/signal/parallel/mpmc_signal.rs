@@ -3,11 +3,9 @@ use crossbeam::sync::TreiberStack;
 
 use runtime::ParallelRuntime;
 use continuation::ContinuationPl;
-use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
-
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefPl};
-use signal::valued_signal::{ValuedSignal, CanEmit, Await};
+use signal::valued_signal::{ValuedSignal, MpSignal, CanEmit, GetValue};
 
 /// A shared pointer to a signal runtime.
 pub struct MpmcSignalRuntimeRef<B, F> {
@@ -26,7 +24,7 @@ struct MpmcSignalRuntime<B, F> {
     default_value: B,
     gather: Mutex<F>,
     value: Mutex<B>,
-    last_value: Mutex<Option<B>>,
+    last_value: Mutex<B>,
     last_value_updated: Mutex<bool>,
     await_works: TreiberStack<Box<ContinuationPl<()>>>,
     present_works: TreiberStack<Box<ContinuationPl<()>>>,
@@ -39,8 +37,8 @@ impl<B, F> MpmcSignalRuntime<B, F> where B: Clone {
             emitted: Mutex::new(false),
             default_value: default.clone(),
             gather: Mutex::new(gather),
-            value: Mutex::new(default),
-            last_value: Mutex::new(None),
+            value: Mutex::new(default.clone()),
+            last_value: Mutex::new(default),
             last_value_updated: Mutex::new(false),
             await_works: TreiberStack::new(),
             present_works: TreiberStack::new(),
@@ -136,10 +134,18 @@ impl<A, B, F> CanEmit<ParallelRuntime, A> for MpmcSignalRuntimeRef<B, F>
             if !*updated {
                 *updated = true;
                 drop(updated);
-                *signal_ref.runtime.last_value.lock().unwrap() = Some(signal_ref.get_value());
+                *signal_ref.runtime.last_value.lock().unwrap() = signal_ref.get_value();
             }
         };
         runtime.on_end_of_instant(Box::new(update_last_value));
+    }
+}
+
+impl<B, F> GetValue<B> for MpmcSignalRuntimeRef<B, F> where B: Clone {
+    /// Returns the value of the signal for the current instant.
+    /// The returned value is cloned and can thus be used directly.
+    fn get_value(&self) -> B {
+        self.runtime.value.lock().unwrap().clone()
     }
 }
 
@@ -151,12 +157,6 @@ impl<B, F> MpmcSignalRuntimeRef<B, F>
         MpmcSignalRuntimeRef {
             runtime: Arc::new(MpmcSignalRuntime::new(default, gather)),
         }
-    }
-
-    /// Returns the value of the signal for the current instant.
-    /// The returned value is cloned and can thus be used directly.
-    fn get_value(&self) -> B {
-        self.runtime.value.lock().unwrap().clone()
     }
 }
 
@@ -183,12 +183,7 @@ impl<B, F> ValuedSignal for MpmcSignalPl<B, F>
     where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static
 {
     type Stored = B;
-
-    fn last_value(&self) -> Option<B> {
-        let r = self.runtime();
-        let last_v = r.runtime.last_value.lock().unwrap();
-        last_v.clone()
-    }
+    type SigType = MpSignal;
 }
 
 impl <B, F> MpmcSignalPl<B, F> where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static {
@@ -198,46 +193,12 @@ impl <B, F> MpmcSignalPl<B, F> where B: Clone + Send + Sync + 'static, F: Send +
     {
         MpmcSignalPl(MpmcSignalRuntimeRef::new(default, gather))
     }
-}
-
-/* Await */
-
-impl<B, F> ConstraintOnValue for Await<MpmcSignalPl<B, F>> where B: Send + Sync {
-    type T = B;
-}
-
-impl<B, F> ProcessPl for Await<MpmcSignalPl<B, F>>
-    where B: Clone + Send + Sync + 'static, F: 'static + Send + Sync
-{
-    fn call<C>(self, runtime: &mut ParallelRuntime, next: C)
-        where C: ContinuationPl<Self::Value>
-    {
-        let signal_runtime = self.0.runtime();
-        let eoi_continuation = move |r: &mut ParallelRuntime, ()| {
-            let stored = signal_runtime.get_value();
-            r.on_next_instant(Box::new(|r: &mut ParallelRuntime, ()| next.call(r, stored)));
-        };
-        self.0.runtime().on_signal(
-            runtime,
-            |r: &mut ParallelRuntime, ()| r.on_end_of_instant(Box::new(eoi_continuation)));
-    }
-}
-
-impl<B, F> ProcessMutPl for Await<MpmcSignalPl<B, F>>
-    where B: Clone + Send + Sync + 'static, F: 'static + Send + Sync
-{
-    fn call_mut<C>(self, runtime: &mut ParallelRuntime, next: C)
-        where Self: Sized, C: ContinuationPl<(Self, Self::Value)>
-    {
-        let signal_runtime = self.0.runtime();
-        let mut signal_runtime2 = self.0.runtime();
-        let eoi_continuation = move |r: &mut ParallelRuntime, ()| {
-            let stored = signal_runtime.get_value();
-            r.on_next_instant(
-                Box::new(|r: &mut ParallelRuntime, ()| next.call(r, (self, stored))));
-        };
-        signal_runtime2.on_signal(
-            runtime,
-            |r: &mut ParallelRuntime, ()| r.on_end_of_instant(Box::new(eoi_continuation)));
+    
+    /// Returns the last value associated to the signal when it was emitted.
+    /// Evaluates to the the default value before the first emission.
+    pub fn last_value(&self) -> B {
+        let r = self.runtime();
+        let last_v = r.runtime.last_value.lock().unwrap();
+        last_v.clone()
     }
 }
