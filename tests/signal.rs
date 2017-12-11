@@ -4,8 +4,8 @@ use reactive::process::{Process, ProcessMut, value_proc};
 use reactive::process::{execute_process, execute_process_parallel};
 use reactive::process::LoopStatus::{Continue, Exit};
 use reactive::signal::{Signal, PureSignal, ValuedSignal};
-use reactive::signal::single_thread::{PureSignalSt, MpmcSignalSt, SpmcSignalSt};
-use reactive::signal::parallel::{PureSignalPl, MpmcSignalPl, SpmcSignalPl};
+use reactive::signal::single_thread::{PureSignalSt, MpmcSignalSt, MpscSignalSt, SpmcSignalSt};
+use reactive::signal::parallel::{PureSignalPl, MpmcSignalPl, MpscSignalPl, SpmcSignalPl};
 
 #[test]
 fn pure_signal_s () {
@@ -25,8 +25,7 @@ fn pure_signal_p () {
 
 #[test]
 fn mpmc_signal_s () {
-    let gather = |x: isize, xs: &mut Vec<isize>| xs.push(x);
-    let s = MpmcSignalSt::new(Vec::new(), gather);
+    let s = MpmcSignalSt::default();
     let p1 = s.emit(3).pause();
     let p2 = s.await_immediate()
              .map(|()| println!("receive s"));
@@ -46,9 +45,9 @@ fn mpmc_signal_s () {
 }
 
 #[test]
-fn while_mpmc_spmc_s () {
+fn while_mpsc_spmc_s () {
     let gather = |x: isize, xs: &mut Vec<isize>| xs.push(x);
-    let s = MpmcSignalSt::new(Vec::new(), gather);
+    let s = MpscSignalSt::new(Vec::new, gather);
     let s_clone = s.clone();
     let counter = SpmcSignalSt::new();
     let counter_clone = counter.clone();
@@ -130,10 +129,32 @@ fn while_mpmc_spmc_p () {
 }
 
 #[test]
+fn mpsc_signal_p () {
+    let s = MpscSignalPl::default();
+    let s_clone = s.clone();
+    let mut counter = 0;
+    let incr_counter = move |()| { counter += 1; counter };
+    let emit_v = move |v| s_clone.emit(v);
+    let p1 = value_proc(())
+             .map(incr_counter)
+             .and_then(emit_v)
+             .repeat(10);
+    let p2 = s.await();
+    assert_eq!(execute_process_parallel(p1.join(p2), 2), ((), (1..11).collect::<Vec<_>>()));
+}
+
+#[test]
 #[should_panic(expected = "Multiple emissions")]
 fn spmc_multiple_emission_s () {
     let s = SpmcSignalSt::new();
     execute_process(s.emit("hello").repeat(2));
+}
+
+#[test]
+#[should_panic(expected = "more than once")]
+fn mpsc_multiple_reception_s () {
+    let s = MpscSignalSt::default();
+    execute_process(s.emit(true).join(s.await()).join(s.await()));
 }
 
 // Other speical behavoirs that can not be easily tested with Rust's built-in
@@ -224,4 +245,14 @@ fn spmc_overflow_p () {
 fn spmc_multiple_emission_p () {
     let s = SpmcSignalPl::new();
     execute_process_parallel(s.emit("hello").repeat(2), 2);
+}
+
+/// Just as the above example, some thread will panic since the signal is awaited
+/// more than once inside an instant, but the thread that panics isnot the 
+/// main thread.
+#[test]
+#[ignore]
+fn mpsc_multiple_reception_p () {
+    let s = MpscSignalPl::default();
+    execute_process_parallel(s.emit(true).join(s.await()).join(s.await()), 3);
 }

@@ -164,7 +164,7 @@ impl<B, F> ValuedSignal for MpmcSignalSt<B, F> where B: Clone + 'static, F: 'sta
     type Stored = B;
     type SigType = MpSignal;
 }
-    
+
 impl<B, F> MpmcSignalSt<B, F> where B: Clone + 'static, F: 'static {
     /// Creates a new mpmc signal.
     pub fn new<A>(default: B, gather: F) -> Self where A: 'static, F: FnMut(A, &mut B) {
@@ -177,5 +177,16 @@ impl<B, F> MpmcSignalSt<B, F> where B: Clone + 'static, F: 'static {
         let r = self.runtime();
         let last_v = r.runtime.last_value.borrow();
         last_v.clone()
+    }
+}
+
+impl MpmcSignalSt<(), ()> {
+    /// Creates a new mpmc signal with the default combination function, which simply
+    /// collects all emitted values in a vector.
+    pub fn default<A>() -> MpmcSignalSt<Vec<A>, fn(A, &mut Vec<A>)> where A: Clone + 'static {
+        fn gather<A>(x: A, xs: &mut Vec<A>) {
+            xs.push(x);
+        }
+        MpmcSignalSt::new(Vec::new(), gather)
     }
 }

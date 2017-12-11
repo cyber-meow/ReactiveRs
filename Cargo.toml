@@ -11,3 +11,4 @@ ordermap = "0.3.2"
 
 [features]
 debug = []
+abort_if_panic = []

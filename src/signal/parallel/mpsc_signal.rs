@@ -196,3 +196,16 @@ impl<B, D, F> MpscSignalPl<B, D, F>
         MpscSignalPl(MpscSignalRuntimeRef::new(get_default, gather))
     }
 }
+
+impl MpscSignalPl<(), (), ()> {
+    /// Creates a new mpsc signal with the default combination function, which simply
+    /// collects all emitted values in a vector.
+    pub fn default<A>() -> MpscSignalPl<Vec<A>, fn() -> Vec<A>, fn(A, &mut Vec<A>)>
+        where A: Send + Sync + 'static
+    {
+        fn gather<A>(x: A, xs: &mut Vec<A>) {
+            xs.push(x);
+        }
+        MpscSignalPl::new(Vec::new, gather)
+    }
+}

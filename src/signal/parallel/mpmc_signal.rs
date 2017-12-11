@@ -186,7 +186,7 @@ impl<B, F> ValuedSignal for MpmcSignalPl<B, F>
     type SigType = MpSignal;
 }
 
-impl <B, F> MpmcSignalPl<B, F> where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static {
+impl<B, F> MpmcSignalPl<B, F> where B: Clone + Send + Sync + 'static, F: Send + Sync + 'static {
     /// Creates a new mpmc signal.
     pub fn new<A>(default: B, gather: F) -> Self
         where A: Send + Sync + 'static, F: FnMut(A, &mut B)
@@ -200,5 +200,18 @@ impl <B, F> MpmcSignalPl<B, F> where B: Clone + Send + Sync + 'static, F: Send +
         let r = self.runtime();
         let last_v = r.runtime.last_value.lock().unwrap();
         last_v.clone()
+    }
+}
+
+impl MpmcSignalPl<(), ()> {
+    /// Creates a new mpmc signal with the default combination function, which simply
+    /// collects all emitted values in a vector.
+    pub fn default<A>() -> MpmcSignalPl<Vec<A>, fn(A, &mut Vec<A>)>
+        where A: Clone + Send + Sync + 'static
+    {
+        fn gather<A>(x: A, xs: &mut Vec<A>) {
+            xs.push(x);
+        }
+        MpmcSignalPl::new(Vec::new(), gather)
     }
 }
