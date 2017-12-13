@@ -1,6 +1,6 @@
 extern crate reactive;
 
-use reactive::process::{Process, ProcessMut, value_proc};
+use reactive::process::{Process, ProcessMut, value_proc, join_all};
 use reactive::process::{execute_process, execute_process_parallel};
 use reactive::process::LoopStatus::{Continue, Exit};
 
@@ -18,6 +18,32 @@ fn process42_p() {
     let p = p.pause().pause();
     let p = p.map(|v| v*2);
     assert_eq!(execute_process_parallel(p, 3), 42);
+}
+
+#[test]
+fn join_all_s() {
+    let mut ps = Vec::new();
+    for i in 0..100 {
+        ps.push(value_proc(())
+                .map(move |()| { println!("{}", i); value_proc(i) })
+                .flatten());
+    }
+    assert_eq!(execute_process(join_all(ps)), (0..100).collect::<Vec<_>>());
+}
+
+#[test]
+fn join_all_p() {
+    let mut ps = Vec::new();
+    for i in 0..100 {
+        let i_closure = |i| {
+            if cfg!(feature = "debug") {
+                println!("{}", i);
+            }
+            value_proc(i)
+        };
+        ps.push(value_proc(i).map(i_closure).flatten());
+    }
+    assert_eq!(execute_process_parallel(join_all(ps), 50), (0..100).collect::<Vec<_>>());
 }
 
 #[test]

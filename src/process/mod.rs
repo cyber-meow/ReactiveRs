@@ -4,6 +4,7 @@
 mod execute_process;
 mod process_mut;
 pub use self::execute_process::{execute_process, execute_process_parallel};
+pub use self::execute_process::execute_process_parallel_with_main;
 pub use self::process_mut::{ProcessMut, ProcessMutSt, ProcessMutPl};
 
 mod value;
@@ -15,6 +16,8 @@ mod then;
 mod if_else;
 mod join;
 mod join_p;
+mod join_all;
+mod join_all_p;
 mod loop_proc;
 mod repeat;
 mod while_proc;
@@ -26,6 +29,7 @@ pub use self::and_then::AndThen;
 pub use self::then::Then;
 pub use self::if_else::IfElse;
 pub use self::join::Join;
+pub use self::join_all::{join_all, JoinAll};
 pub use self::loop_proc::Loop;
 pub use self::repeat::Repeat;
 pub use self::while_proc::{While, LoopStatus};

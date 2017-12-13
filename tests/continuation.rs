@@ -30,6 +30,6 @@ fn continuation42_p() {
     let c = c.pause().map(|()| println!("hello")).pause().pause();
     let mut runtime_collection = ParallelRuntimeCollection::new(2);
     runtime_collection.register_work(Box::new(c));
-    runtime_collection.execute();
+    runtime_collection.execute(|| ());
     assert_eq!(*val.lock().unwrap(), 42);
 }
