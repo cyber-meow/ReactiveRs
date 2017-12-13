@@ -4,6 +4,7 @@ use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
 /// Indicates if a loop is terminated or not.
+#[derive(Copy, Clone)]
 pub enum LoopStatus<V> { Continue, Exit(V) }
 
 /// Repeats a process having `LoopStatus` as return type until it returns `Exit(v)`

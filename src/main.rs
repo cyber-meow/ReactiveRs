@@ -1,10 +1,12 @@
 extern crate piston_window;
+extern crate rand;
 extern crate nalgebra as na;
 extern crate reactive;
 
 use std::{cmp, thread, time};
 use std::sync::{Arc, Mutex, Condvar};
 use piston_window::*;
+use rand::{Rng, XorShiftRng, weak_rng};
 
 use reactive::process::{Process, ProcessMut};
 use reactive::process::{value_proc, execute_process_parallel_with_main};
@@ -19,62 +21,99 @@ fn main() {
         sugar_color: [1.0, 0.7, 0.1, 1.0],
         agent_color: [0.2, 0.1, 1.0, 1.0],
     };
+
     let sim = Simulation {
-        sugar_capacity: na::DMatrix::from_element(60, 60, 6),
+        sugar_capacity: na::DMatrix::from_element(80, 60, 6),
         sugar_grow_back_rate: 1,
         sugar_grow_back_interval: 1,
     };
+
     let grid = grid::Grid {
-        cols: 60,
+        cols: 80,
         rows: 60,
         units: 10.0,
     };
+
     let gs = GlobalState {
-        sugar: na::DMatrix::from_element(60, 60, 1),
+        sugar_dist: na::DMatrix::from_element(80, 60, 1),
+        agent_poss: vec![(0, 3)],
         tick: 0,
     };
     let gs = Arc::new(Mutex::new(gs));
     let gs_cl = gs.clone();
+    let gs_cl2 = gs.clone();
 
     let gs_signal = SpmcSignalPl::new();
     let gs_signal_rev = gs_signal.clone();
+
     let tick = SpmcSignalPl::new();
     let tick_rev = tick.clone();
-    //let aps_signal = MpmcSignalSt::default();
     
+    let aps_signal = MpmcSignalPl::default();
+    let aps_signal_rev = aps_signal.clone();
+
+    let mut possible_cells: Vec<_> = grid.cells().collect();
+    weak_rng().shuffle(&mut possible_cells);
+    let init_aps = possible_cells.iter().take(3);
+    
+    let mut agents = Vec::new();
+
+    for &agent_pos in init_aps {
+        let mut ag = Agent {
+            pos: (agent_pos.0 as usize, agent_pos.1 as usize),
+            sugar: 10,
+            sugar_metabolism: 2,
+            vision: 4,
+            rng: weak_rng(),
+        };
+
+        let aps_signal = aps_signal.clone();
+        let tick_rev = tick_rev.clone();
+        let agent_alive = move |pos| {
+            aps_signal
+            .emit(pos)
+            .then(tick_rev.await())
+            .if_else(value_proc(Continue).pause(), value_proc(Exit(())))
+        };
+
+        let agent_move_clos = move |sugar_dist: Arc<na::DMatrix<usize>>| {
+            let alive = ag.metabolise();
+            let new_agent_pos = ag.move_to(&sugar_dist);
+            value_proc(alive).if_else(agent_alive(new_agent_pos), value_proc(Exit(())))
+        };
+
+        let agent_proc =
+            gs_signal_rev
+            .await()
+            .and_then(agent_move_clos)
+            .while_proc();
+
+        agents.push(agent_proc);
+    }
+
     let broadcast_sugar_dist = move |()| {
-        let sugar_dist = gs_cl.lock().unwrap().sugar.clone();
+        sim.update_global_state(&mut *gs_cl.lock().unwrap());
+        let sugar_dist = gs_cl.lock().unwrap().sugar_dist.clone();
         gs_signal.emit(Arc::new(sugar_dist))
     };
-    let update_patches_clos = move |to_continue| {
-        sim.update_game_state(&mut *gs.lock().unwrap(), &vec![]);
+    let update_patches_clos = move |(to_continue, aps)| {
+        gs_cl2.lock().unwrap().agent_poss = aps;
         if to_continue { Continue } else { Exit(()) }
     };
 
     let update_patches = 
         value_proc(())
         .and_then(broadcast_sugar_dist)
-        .then(tick_rev.await())
-        .pause()
+        .then(tick_rev.await().join(aps_signal_rev.await()))
         .map(update_patches_clos)
         .while_proc();
     
-    let mut window: PistonWindow = 
-        WindowSettings::new("Hello", (600, 600))
-        .exit_on_esc(true)
-        .build()
-        .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
-    window.set_max_fps(4);
-
-    let sugar_dist_main = Arc::new(Mutex::new(Arc::new(na::DMatrix::from_element(60, 60, 1))));
-    let sugar_dist_main_cl = sugar_dist_main.clone();
     let simulation_updated = Arc::new((Mutex::new(false), Condvar::new()));
     let simulation_updated_cl = simulation_updated.clone();
     let window_updated = Arc::new((Mutex::new(WindowUpdated::NotYet), Condvar::new()));
     let window_updated_cl = window_updated.clone();
 
-    let inform_simulation_updated = move |sugar_dist: Arc<na::DMatrix<usize>>| {
-        *sugar_dist_main_cl.lock().unwrap() = sugar_dist.clone();
+    let inform_simulation_updated = move |_| {
         let (ref updated, ref cvar) = *simulation_updated_cl;
         *updated.lock().unwrap() = true;
         cvar.notify_one();
@@ -91,7 +130,7 @@ fn main() {
             WindowUpdated::End => {
                 return tick.emit(false).then(value_proc(Exit(())));
             },
-            WindowUpdated::NotYet => panic!("This shouldn't happen!"),
+            WindowUpdated::NotYet => panic!("This shouldn't happen!!!"),
         }
     };
 
@@ -101,9 +140,15 @@ fn main() {
         .and_then(inform_simulation_updated)
         .pause()
         .while_proc();
+    
+    let mut window: PistonWindow = 
+        WindowSettings::new("Hello", (800, 600))
+        .exit_on_esc(true)
+        .build()
+        .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
+    //window.set_max_fps(4);
 
     let update_window_clos = || {
-        let aps = vec![(0, 3), (10, 50)];
         let mut window_updated_local = true;
         while let Some(e) = window.next() {
             if window_updated_local {
@@ -117,8 +162,7 @@ fn main() {
             }
             window.draw_2d(&e, |c, g| {
                 clear(color::WHITE, g);
-                update_window(c, g, &sugar_dist_main.lock().unwrap(),
-                              &aps, &display_config, &grid);
+                update_window(c, g, &gs.lock().unwrap(), &display_config, &grid);
                 window_updated_local = true;
             });
             if window_updated_local {
@@ -131,9 +175,13 @@ fn main() {
         *updated.lock().unwrap() = WindowUpdated::End;
         cvar.notify_one();
     };
+    
+    let agents_proc = agents.pop().unwrap();
+    let agents_proc = agents_proc.join(agents.pop().unwrap());
+    let agents_proc = agents_proc.join(agents.pop().unwrap());
 
     execute_process_parallel_with_main(
-        update_window_clos, update_patches.join(inform_updated), 2);
+        update_window_clos, update_patches.join(inform_updated).join(agents_proc), 3);
 }
 
 #[derive(PartialEq)]
@@ -149,14 +197,20 @@ struct Simulation {
     sugar_grow_back_interval: usize,
 }
 
+struct GlobalState {
+    sugar_dist: na::DMatrix<usize>,
+    agent_poss: Vec<(usize, usize)>,
+    tick: usize,
+}
+
 impl Simulation {
-    fn update_game_state(&self, gs: &mut GlobalState, aps: &Vec<(usize, usize)>) {
-        for &agent_pos in aps.iter() {
-            gs.sugar[agent_pos] = 0;
+    fn update_global_state(&self, gs: &mut GlobalState) {
+        for &agent_pos in gs.agent_poss.iter() {
+            gs.sugar_dist[agent_pos] = 0;
         }
         gs.tick = (gs.tick+1) % self.sugar_grow_back_interval;
         if gs.tick == 0 {
-            gs.sugar = gs.sugar.zip_map(
+            gs.sugar_dist = gs.sugar_dist.zip_map(
                 &self.sugar_capacity,
                 |sugar, sugar_capacity|
                     cmp::min(sugar+self.sugar_grow_back_rate, sugar_capacity))
@@ -164,9 +218,49 @@ impl Simulation {
     }
 }
 
-struct GlobalState {
-    sugar: na::DMatrix<usize>,
-    tick: usize,
+struct Agent {
+    pos: (usize, usize),
+    sugar: usize,
+    sugar_metabolism: usize,
+    vision: usize,
+    rng: XorShiftRng,
+}
+
+
+impl Agent {
+    fn can_see(&self, max_width: usize, max_height: usize) -> Vec<(usize, usize)> {
+        let (x, y) = self.pos;
+        let y_min = y.saturating_sub(self.vision);
+        let y_max = cmp::min(y + self.vision, max_height);
+        let x_min = x.saturating_sub(self.vision);
+        let x_max = cmp::min(x + self.vision, max_width);
+        let move_along_x = (x_min..x).chain(x+1..x_max+1).map(|x| (x, y));
+        let move_along_y = (y_min..y).chain(y+1..y_max+1).map(|y| (x, y));
+        move_along_x.chain(move_along_y).collect()
+    }
+
+    /// Returns a boolean to indiacate if the agent is still alive.
+    fn metabolise(&mut self) -> bool {
+        self.sugar = self.sugar.saturating_sub(self.sugar_metabolism);
+        self.sugar > 0
+    }
+
+    fn move_to(&mut self, sugar_dist: &na::DMatrix<usize>) -> (usize, usize) {
+        let self_pos = self.pos.clone();
+        let mut current_most = sugar_dist[self_pos];
+        let mut possible_next_pos = vec![self_pos];
+        for &pos in self.can_see(sugar_dist.nrows()-1, sugar_dist.ncols()-1).iter() {
+            if sugar_dist[pos] > current_most {
+                current_most = sugar_dist[pos];
+                possible_next_pos = vec![pos];
+            } else if sugar_dist[pos] == current_most {
+                possible_next_pos.push(pos)
+            }
+        }
+        self.pos = self.rng.choose(&possible_next_pos).unwrap().clone();
+        self.sugar += sugar_dist[self.pos.clone()];
+        self.pos
+    }
 }
 
 struct DisplayConfig {
@@ -187,18 +281,17 @@ impl DisplayConfig {
 fn update_window(
     c: Context,
     g: &mut G2d,
-    sugar: &na::DMatrix<usize>,
-    agent_poss: &Vec<(usize, usize)>,
+    gs: &GlobalState,
     config: &DisplayConfig,
     grid: &grid::Grid)
 {
     for cell in grid.cells() {
         let color = config.compute_cell_color(
-            sugar[(cell.0 as usize, cell.1 as usize)]);
+            gs.sugar_dist[(cell.0 as usize, cell.1 as usize)]);
         let coord = grid.cell_position(cell);
         rectangle(color, [coord[0], coord[1], grid.units, grid.units], c.transform, g);
     }
-    for &agent_pos in agent_poss.iter() {
+    for &agent_pos in gs.agent_poss.iter() {
         let coord = grid.cell_position((agent_pos.0 as u32, agent_pos.1 as u32));
         ellipse(config.agent_color, 
                 [coord[0], coord[1], grid.units, grid.units], c.transform, g);
