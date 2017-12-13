@@ -162,30 +162,3 @@ impl<V> SpmcSignalSt<V> where V: Clone + 'static {
         last_v.clone()
     }
 }
-
-/* Await */
-
-/*
-impl<V> ProcessSt for Await<SpmcSignalSt<V>> where V: Clone + 'static {
-    fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
-        where C: ContinuationSt<Self::Value>
-    {
-        let signal_runtime = self.0.runtime();
-        self.0.runtime().on_signal(
-            runtime,
-            move |r: &mut SingleThreadRuntime, ()| next.call(r, signal_runtime.get_value()));
-    }
-}
-
-impl<V> ProcessMutSt for Await<SpmcSignalSt<V>> where V: Clone + 'static {
-    fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
-        where Self: Sized, C: ContinuationSt<(Self, Self::Value)>
-    {
-        let signal_runtime = self.0.runtime();
-        let mut signal_runtime2 = self.0.runtime();
-        signal_runtime2.on_signal(
-            runtime,
-            move |r: &mut SingleThreadRuntime, ()|
-                next.call(r, (self, signal_runtime.get_value())));
-    }
-}*/
