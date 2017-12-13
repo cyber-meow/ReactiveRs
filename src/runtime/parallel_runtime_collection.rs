@@ -72,7 +72,7 @@ impl ParallelRuntimeCollection {
     /// that is executing the program is aborted whenever a child thread panics.
     /// Maybe there's another way to smartly deal with panics coming from child threads
     /// but I am not particularly working on it.
-    pub fn execute(&mut self) {
+    pub fn execute<F>(&mut self, main_thread_function: F) where F: FnOnce() {
         #[cfg(feature = "abort_if_panic")] {
             // The function `take_handler` returns the default handler in case
             // when a custom one is not set.
@@ -87,6 +87,7 @@ impl ParallelRuntimeCollection {
             for runtime in self.runtimes.iter_mut() {
                 scope.spawn(move || runtime.execute());
             }
+            main_thread_function();
         });
     }
 

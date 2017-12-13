@@ -3,11 +3,11 @@ extern crate nalgebra as na;
 extern crate reactive;
 
 use std::{cmp, thread, time};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Condvar};
 use piston_window::*;
 
 use reactive::process::{Process, ProcessMut};
-use reactive::process::{value_proc, execute_process, execute_process_parallel};
+use reactive::process::{value_proc, execute_process_parallel_with_main};
 use reactive::process::LoopStatus::{Continue, Exit};
 use reactive::signal::ValuedSignal;
 use reactive::signal::parallel::{SpmcSignalPl, MpmcSignalPl};
@@ -64,31 +64,83 @@ fn main() {
         .exit_on_esc(true)
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
-    window.set_max_fps(2);
-    
-    let update_window_clos = move |sugar_dist: Arc<na::DMatrix<usize>>| {
-        let aps = vec![(0, 3), (10, 50)];
-        let mut window_updated = false;
-        while let Some(e) = window.next() {
-            window.draw_2d(&e, |c, g| {
-                clear(color::WHITE, g);
-                update_window(c, g, &sugar_dist, &aps, &display_config, &grid);
-                window_updated = true;
-            });
-            if window_updated {
-                return tick.emit(true).then(value_proc(Continue));
-            }
+    window.set_max_fps(4);
+
+    let sugar_dist_main = Arc::new(Mutex::new(Arc::new(na::DMatrix::from_element(60, 60, 1))));
+    let sugar_dist_main_cl = sugar_dist_main.clone();
+    let simulation_updated = Arc::new((Mutex::new(false), Condvar::new()));
+    let simulation_updated_cl = simulation_updated.clone();
+    let window_updated = Arc::new((Mutex::new(WindowUpdated::NotYet), Condvar::new()));
+    let window_updated_cl = window_updated.clone();
+
+    let inform_simulation_updated = move |sugar_dist: Arc<na::DMatrix<usize>>| {
+        *sugar_dist_main_cl.lock().unwrap() = sugar_dist.clone();
+        let (ref updated, ref cvar) = *simulation_updated_cl;
+        *updated.lock().unwrap() = true;
+        cvar.notify_one();
+        let (ref lock, ref cvar) = *window_updated_cl;
+        let mut updated = lock.lock().unwrap();
+        while *updated == WindowUpdated::NotYet {
+            updated = cvar.wait(updated).unwrap();
         }
-        return tick.emit(false).then(value_proc(Exit(())));
+        match *updated {
+            WindowUpdated::Done => {
+                *updated = WindowUpdated::NotYet;
+                return tick.emit(true).then(value_proc(Continue));
+            },
+            WindowUpdated::End => {
+                return tick.emit(false).then(value_proc(Exit(())));
+            },
+            WindowUpdated::NotYet => panic!("This shouldn't happen!"),
+        }
     };
-    let update_window_proc = 
+
+    let inform_updated = 
         gs_signal_rev
         .await()
-        .and_then(update_window_clos)
+        .and_then(inform_simulation_updated)
         .pause()
         .while_proc();
 
-    execute_process_parallel(update_patches.join(update_window_proc), 2);
+    let update_window_clos = || {
+        let aps = vec![(0, 3), (10, 50)];
+        let mut window_updated_local = true;
+        while let Some(e) = window.next() {
+            if window_updated_local {
+                let (ref lock, ref cvar) = *simulation_updated;
+                let mut updated = lock.lock().unwrap();
+                while !*updated {
+                    updated = cvar.wait(updated).unwrap();
+                }
+                *updated = false;
+                window_updated_local = false;
+            }
+            window.draw_2d(&e, |c, g| {
+                clear(color::WHITE, g);
+                update_window(c, g, &sugar_dist_main.lock().unwrap(),
+                              &aps, &display_config, &grid);
+                window_updated_local = true;
+            });
+            if window_updated_local {
+                let (ref updated, ref cvar) = *window_updated;
+                *updated.lock().unwrap() = WindowUpdated::Done;
+                cvar.notify_one();
+            }
+        }
+        let (ref updated, ref cvar) = *window_updated;
+        *updated.lock().unwrap() = WindowUpdated::End;
+        cvar.notify_one();
+    };
+
+    execute_process_parallel_with_main(
+        update_window_clos, update_patches.join(inform_updated), 2);
+}
+
+#[derive(PartialEq)]
+enum WindowUpdated {
+    Done,
+    NotYet,
+    End,
 }
 
 struct Simulation {

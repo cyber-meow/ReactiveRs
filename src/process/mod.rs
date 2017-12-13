@@ -4,6 +4,7 @@
 mod execute_process;
 mod process_mut;
 pub use self::execute_process::{execute_process, execute_process_parallel};
+pub use self::execute_process::execute_process_parallel_with_main;
 pub use self::process_mut::{ProcessMut, ProcessMutSt, ProcessMutPl};
 
 mod value;
