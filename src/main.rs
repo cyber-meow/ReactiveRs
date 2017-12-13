@@ -3,13 +3,14 @@ extern crate rand;
 extern crate nalgebra as na;
 extern crate reactive;
 
-use std::cmp;
+use std::{cmp, f64};
 use std::sync::{Arc, Mutex, Condvar};
 use piston_window::*;
 use rand::{Rng, XorShiftRng, weak_rng};
 
 use reactive::process::{Process, ProcessMut};
-use reactive::process::{value_proc, execute_process_parallel_with_main};
+use reactive::process::{value_proc, join_all};
+use reactive::process::execute_process_parallel_with_main;
 use reactive::process::LoopStatus::{Continue, Exit};
 use reactive::signal::ValuedSignal;
 use reactive::signal::parallel::{SpmcSignalPl, MpmcSignalPl};
@@ -22,8 +23,11 @@ fn main() {
         agent_color: [0.2, 0.1, 1.0, 1.0],
     };
 
+    let sugar_dist = gen_sugar_capcity(
+        vec![(7, 10), (23, 46), (52, 33)], 6, vec![3., 7., 13., 20., 30., 50.], 80, 60);
+
     let sim = Simulation {
-        sugar_capacity: na::DMatrix::from_element(80, 60, 6),
+        sugar_capacity: sugar_dist.clone(),
         sugar_grow_back_rate: 1,
         sugar_grow_back_interval: 1,
     };
@@ -34,11 +38,17 @@ fn main() {
         units: 10.0,
     };
 
+    let mut possible_cells: Vec<_> = grid.cells().collect();
+    weak_rng().shuffle(&mut possible_cells);
+    let init_aps: Vec<_> = 
+        possible_cells.iter().take(50).map(|&(x, y)| (x as usize, y as usize)).collect();
+
     let gs = GlobalState {
-        sugar_dist: na::DMatrix::from_element(80, 60, 1),
-        agent_poss: vec![(0, 3)],
+        sugar_dist: sugar_dist,
+        agent_poss: init_aps.clone(),
         tick: 0,
     };
+
     let gs = Arc::new(Mutex::new(gs));
     let gs_cl = gs.clone();
     let gs_cl2 = gs.clone();
@@ -52,17 +62,13 @@ fn main() {
     let aps_signal = MpmcSignalPl::default();
     let aps_signal_rev = aps_signal.clone();
 
-    let mut possible_cells: Vec<_> = grid.cells().collect();
-    weak_rng().shuffle(&mut possible_cells);
-    let init_aps = possible_cells.iter().take(3);
-    
     let mut agents = Vec::new();
 
-    for &agent_pos in init_aps {
+    for &agent_pos in init_aps.iter() {
         let mut ag = Agent {
             pos: (agent_pos.0 as usize, agent_pos.1 as usize),
             sugar: 10,
-            sugar_metabolism: 2,
+            sugar_metabolism: 3,
             vision: 4,
             rng: weak_rng(),
         };
@@ -96,6 +102,7 @@ fn main() {
         let sugar_dist = gs_cl.lock().unwrap().sugar_dist.clone();
         gs_signal.emit(Arc::new(sugar_dist))
     };
+
     let update_patches_clos = move |(to_continue, aps)| {
         gs_cl2.lock().unwrap().agent_poss = aps;
         if to_continue { Continue } else { Exit(()) }
@@ -146,7 +153,7 @@ fn main() {
         .exit_on_esc(true)
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
-    //window.set_max_fps(4);
+    window.set_max_fps(8);
 
     let update_window_clos = || {
         let mut window_updated_local = true;
@@ -176,12 +183,10 @@ fn main() {
         cvar.notify_one();
     };
     
-    let agents_proc = agents.pop().unwrap();
-    let agents_proc = agents_proc.join(agents.pop().unwrap());
-    let agents_proc = agents_proc.join(agents.pop().unwrap());
+    let agents_proc = join_all(agents);
 
     execute_process_parallel_with_main(
-        update_window_clos, update_patches.join(inform_updated).join(agents_proc), 3);
+        update_window_clos, update_patches.join(inform_updated).join(agents_proc), 2);
 }
 
 #[derive(PartialEq)]
@@ -218,6 +223,32 @@ impl Simulation {
     }
 }
 
+fn distance(pos1: (usize, usize), pos2: (usize, usize)) -> f64 {
+    let x_dist = pos1.0 as f64 - pos2.0 as f64;
+    let y_dist = pos1.1 as f64 - pos2.1 as f64;
+    (x_dist.powi(2) + y_dist.powi(2)).sqrt()
+}
+
+/// `rayons` is supposed to be sorted and have length `max_sugar`.
+fn gen_sugar_capcity(
+    centers: Vec<(usize, usize)>,
+    max_sugar: usize,
+    rayons: Vec<f64>,
+    width: usize,
+    height: usize) -> na::DMatrix<usize>
+{
+    let decide_sugar_amount = |x, y| {
+        let min_dist = 
+            centers
+            .iter()
+            .map(|&center| distance(center, (x, y)))
+            .fold(f64::INFINITY, f64::min);
+        let nth_circle = rayons.iter().position(|&x| x > min_dist);
+        nth_circle.map_or(0, |n| max_sugar - n)
+    };
+    na::DMatrix::from_fn(width, height, decide_sugar_amount)
+}
+
 struct Agent {
     pos: (usize, usize),
     sugar: usize,
@@ -226,6 +257,11 @@ struct Agent {
     rng: XorShiftRng,
 }
 
+fn l1_distance(pos1: (usize, usize), pos2: (usize, usize)) -> usize {
+    let x_dist = cmp::max(pos1.0, pos2.0) - cmp::min(pos1.0, pos2.0);
+    let y_dist = cmp::max(pos1.1, pos2.1) - cmp::min(pos1.1, pos2.1);
+    x_dist + y_dist
+}
 
 impl Agent {
     fn can_see(&self, max_width: usize, max_height: usize) -> Vec<(usize, usize)> {
@@ -248,13 +284,21 @@ impl Agent {
     fn move_to(&mut self, sugar_dist: &na::DMatrix<usize>) -> (usize, usize) {
         let self_pos = self.pos.clone();
         let mut current_most = sugar_dist[self_pos];
+        let mut min_d = 0;
         let mut possible_next_pos = vec![self_pos];
         for &pos in self.can_see(sugar_dist.nrows()-1, sugar_dist.ncols()-1).iter() {
+            let d = l1_distance(pos, self.pos);
             if sugar_dist[pos] > current_most {
                 current_most = sugar_dist[pos];
+                min_d = d;
                 possible_next_pos = vec![pos];
             } else if sugar_dist[pos] == current_most {
-                possible_next_pos.push(pos)
+                if d < min_d {
+                    min_d = d;
+                    possible_next_pos = vec![pos];
+                } else if d == min_d {
+                    possible_next_pos.push(pos);
+                }
             }
         }
         self.pos = self.rng.choose(&possible_next_pos).unwrap().clone();
