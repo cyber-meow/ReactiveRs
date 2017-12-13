@@ -3,7 +3,7 @@ extern crate rand;
 extern crate nalgebra as na;
 extern crate reactive;
 
-use std::{cmp, thread, time};
+use std::cmp;
 use std::sync::{Arc, Mutex, Condvar};
 use piston_window::*;
 use rand::{Rng, XorShiftRng, weak_rng};

@@ -14,3 +14,8 @@ nalgebra = "0.13"
 [features]
 debug = []
 abort_if_panic = []
+
+[[bin]]
+name = "sugarscape"
+path = "src/main.rs"
+doc = false

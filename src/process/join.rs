@@ -57,13 +57,13 @@ impl<P1, P2> ProcessMutSt for Join<P1, P2> where P1: ProcessMutSt, P2: ProcessMu
 
 /// Used by `Join` as a barrier for two processes.
 struct JoinPoint<V1, V2, C> {
-    counter: i32,
+    counter: isize,
     values: (Option<V1>, Option<V2>),
     continuation: Option<C>,
 }
 
-impl<V1, V2, C> JoinPoint<V1, V2, C> {
-    fn new(continuation: C) -> Self where C: ContinuationSt<(V1, V2)> {
+impl<V1, V2, C> JoinPoint<V1, V2, C> where C: ContinuationSt<(V1, V2)> {
+    fn new(continuation: C) -> Self {
         JoinPoint {
             counter: 0,
             values: (None, None),
@@ -71,17 +71,15 @@ impl<V1, V2, C> JoinPoint<V1, V2, C> {
         }
     }
     
-    fn call_ref(&mut self, runtime: &mut SingleThreadRuntime, value: Either<V1, V2>) 
-        where V1: 'static, V2: 'static, C: ContinuationSt<(V1, V2)>   
-    {
+    fn call_ref(&mut self, runtime: &mut SingleThreadRuntime, value: Either<V1, V2>) {
         match value {
             Left(value1) => {
-                assert_eq!(self.values.0.is_none(), true);
+                assert!(self.values.0.is_none());
                 self.values.0 = Some(value1);
                 self.counter += 1;
             },
             Right(value2) => {
-                assert_eq!(self.values.1.is_none(), true);
+                assert!(self.values.1.is_none());
                 self.values.1 = Some(value2);
                 self.counter += 1;
             }
