@@ -15,16 +15,22 @@ use reactive::process::LoopStatus::{Continue, Exit};
 use reactive::signal::ValuedSignal;
 use reactive::signal::parallel::{SpmcSignalPl, MpmcSignalPl};
 
+const WIDTH: usize = 80;
+const HEIGHT: usize = 60;
+const NUM_AGENTS: usize = 50;
+const MAX_SUGAR: usize = 6;
+
 fn main() {
 
     let display_config = DisplayConfig {
         max_sugar: 6,
         sugar_color: [1.0, 0.7, 0.1, 1.0],
-        agent_color: [0.2, 0.1, 1.0, 1.0],
+        agent_color: [0.2, 0.1, 1.0, 0.6],
     };
 
     let sugar_dist = gen_sugar_capcity(
-        vec![(7, 10), (23, 46), (52, 33)], 6, vec![3., 7., 13., 20., 30., 50.], 80, 60);
+        vec![(7, 10), (23, 46), (52, 33)], MAX_SUGAR, 
+        vec![3., 7., 13., 20., 30., 50.], WIDTH, HEIGHT);
 
     let sim = Simulation {
         sugar_capacity: sugar_dist.clone(),
@@ -33,28 +39,31 @@ fn main() {
     };
 
     let grid = grid::Grid {
-        cols: 80,
-        rows: 60,
+        cols: WIDTH as u32,
+        rows: HEIGHT as u32,
         units: 10.0,
     };
 
     let mut possible_cells: Vec<_> = grid.cells().collect();
     weak_rng().shuffle(&mut possible_cells);
     let init_aps: Vec<_> = 
-        possible_cells.iter().take(50).map(|&(x, y)| (x as usize, y as usize)).collect();
+        possible_cells.iter().take(NUM_AGENTS)
+        .map(|&(x, y)| (x as usize, y as usize)).collect();
 
     let gs = GlobalState {
         sugar_dist: sugar_dist,
-        agent_poss: init_aps.clone(),
+        occupied: na::DMatrix::from_element(80, 60, 0),
+        aps: init_aps.clone(),
         tick: 0,
     };
 
     let gs = Arc::new(Mutex::new(gs));
-    let gs_cl = gs.clone();
-    let gs_cl2 = gs.clone();
 
-    let gs_signal = SpmcSignalPl::new();
-    let gs_signal_rev = gs_signal.clone();
+    let sd_signal = SpmcSignalPl::new();
+    let sd_signal_rev = sd_signal.clone();
+
+    let occupied = SpmcSignalPl::new();
+    let occupied_rev = occupied.clone();
 
     let tick = SpmcSignalPl::new();
     let tick_rev = tick.clone();
@@ -62,59 +71,116 @@ fn main() {
     let aps_signal = MpmcSignalPl::default();
     let aps_signal_rev = aps_signal.clone();
 
+    let mut confirm = Vec::new();
+    for _ in 0..NUM_AGENTS {
+        confirm.push(SpmcSignalPl::new());
+    }
+
     let mut agents = Vec::new();
 
-    for &agent_pos in init_aps.iter() {
-        let mut ag = Agent {
-            pos: (agent_pos.0 as usize, agent_pos.1 as usize),
+    for (i, &agent_pos) in init_aps.iter().enumerate() {
+        let pos = (agent_pos.0 as usize, agent_pos.1 as usize);
+        let ag = Agent {
+            pos: pos,
+            next_pos: pos,
             sugar: 10,
             sugar_metabolism: 3,
             vision: 4,
             rng: weak_rng(),
         };
+        let ag = Arc::new(Mutex::new(ag));
 
+        let occupied_rev = occupied_rev.clone();
+        let confirm = confirm[i].clone();
         let aps_signal = aps_signal.clone();
-        let tick_rev = tick_rev.clone();
-        let agent_alive = move |pos| {
-            aps_signal
-            .emit(pos)
-            .then(tick_rev.await())
-            .if_else(value_proc(Continue).pause(), value_proc(Exit(())))
-        };
-
-        let agent_move_clos = move |sugar_dist: Arc<na::DMatrix<usize>>| {
-            let alive = ag.metabolise();
-            let new_agent_pos = ag.move_to(&sugar_dist);
-            value_proc(alive).if_else(agent_alive(new_agent_pos), value_proc(Exit(())))
-        };
-
-        let agent_proc =
-            gs_signal_rev
+        let ag_cl = ag.clone();
+        
+        let agent_alive = move |sugar_dist: Arc<na::DMatrix<usize>>| {
+            let ag_cl2 = ag_cl.clone();
+            let aps_signal = aps_signal.clone();
+            let sd_cl = sugar_dist.clone();
+            let seek_next_pos = move |occupied: Arc<na::DMatrix<usize>>| {
+                let agent_pos_update = ag_cl2.lock().unwrap().move_to(&sd_cl, &occupied);
+                aps_signal.emit((i, agent_pos_update))
+            };
+            let ag_cl2 = ag_cl.clone();
+            let update_ag_pos = move |()| {
+                ag_cl2.lock().unwrap().update_pos_sugar(&sugar_dist);
+                Exit(Continue)
+            };
+            occupied_rev
             .await()
-            .and_then(agent_move_clos)
+            .and_then(seek_next_pos)
+            // Must wait next instant to get a confirmation.
+            .pause()
+            .then(confirm.await())
+            .if_else(value_proc(()).map(update_ag_pos), value_proc(Continue))
+            .while_proc()
+        };
+
+        let definitely_move = move |sugar_dist: Arc<na::DMatrix<usize>>| {
+            let alive = ag.lock().unwrap().metabolise();
+            value_proc(alive).if_else(agent_alive(sugar_dist), value_proc(Exit(())))
+        };
+
+        let tick_rev = tick_rev.clone();
+        let await_tick = move |sugar_dist: Arc<na::DMatrix<usize>>| {
+            tick_rev
+            .await()
+            .if_else(definitely_move(sugar_dist), value_proc(Exit(())))
+        };
+        
+        let agent_proc =
+            sd_signal_rev
+            .await()
+            .and_then(await_tick)
             .while_proc();
 
         agents.push(agent_proc);
     }
 
+    let gs_cl = gs.clone();
     let broadcast_sugar_dist = move |()| {
         sim.update_global_state(&mut *gs_cl.lock().unwrap());
         let sugar_dist = gs_cl.lock().unwrap().sugar_dist.clone();
-        gs_signal.emit(Arc::new(sugar_dist))
+        sd_signal.emit(Arc::new(sugar_dist))
     };
 
-    let update_patches_clos = move |(to_continue, aps)| {
-        gs_cl2.lock().unwrap().agent_poss = aps;
-        if to_continue { Continue } else { Exit(()) }
+    let gs_cl = gs.clone();
+    let reset_aps = move |()| gs_cl.lock().unwrap().aps = Vec::new();
+
+    let gs_cl = gs.clone();
+    let collision_detect = move |aps_update| {
+        let (confirmed, rejected) = gs_cl.lock().unwrap().update_aps(aps_update);
+        let confirm_signals = confirmed.iter().map(|&i| confirm[i].emit(true));
+        let reject_signals = rejected.iter().map(|&i| confirm[i].emit(false));
+        let confirmations = join_all(confirm_signals.chain(reject_signals));
+        let all_updated = rejected.is_empty();
+        confirmations.then(
+            value_proc(all_updated).if_else(value_proc(Exit(Continue)), value_proc(Continue)))
     };
+
+    let gs_cl = gs.clone();
+    let occupied = occupied.clone();
+    let broadcast_occupied = move |()| {
+        let occup = gs_cl.lock().unwrap().occupied.clone();
+        occupied.emit(Arc::new(occup))
+    };
+
+    let update_aps =
+        value_proc(())
+        .and_then(broadcast_occupied)
+        .then(aps_signal_rev.await())
+        .and_then(collision_detect)
+        .while_proc();
 
     let update_patches = 
         value_proc(())
         .and_then(broadcast_sugar_dist)
-        .then(tick_rev.await().join(aps_signal_rev.await()))
-        .map(update_patches_clos)
+        .then(tick_rev.await())
+        .if_else(value_proc(()).map(reset_aps).then(update_aps), value_proc(Exit(())))
         .while_proc();
-    
+
     let simulation_updated = Arc::new((Mutex::new(false), Condvar::new()));
     let simulation_updated_cl = simulation_updated.clone();
     let window_updated = Arc::new((Mutex::new(WindowUpdated::NotYet), Condvar::new()));
@@ -142,14 +208,14 @@ fn main() {
     };
 
     let inform_updated = 
-        gs_signal_rev
+        sd_signal_rev
         .await()
         .and_then(inform_simulation_updated)
         .pause()
         .while_proc();
     
     let mut window: PistonWindow = 
-        WindowSettings::new("Hello", (800, 600))
+        WindowSettings::new("Hello", ((WIDTH as u32)*10, (HEIGHT as u32)*10))
         .exit_on_esc(true)
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
@@ -186,7 +252,7 @@ fn main() {
     let agents_proc = join_all(agents);
 
     execute_process_parallel_with_main(
-        update_window_clos, update_patches.join(inform_updated).join(agents_proc), 2);
+        update_window_clos, update_patches.join(inform_updated).join(agents_proc), 4);
 }
 
 #[derive(PartialEq)]
@@ -196,21 +262,46 @@ enum WindowUpdated {
     End,
 }
 
+struct GlobalState {
+    sugar_dist: na::DMatrix<usize>,
+    occupied: na::DMatrix<usize>,
+    aps: Vec<(usize, usize)>,
+    tick: usize,
+}
+
+impl GlobalState {
+    fn update_aps(
+        &mut self, aps_update: Vec<(usize, ((usize, usize), (usize, usize)))>)
+        -> (Vec<usize>, Vec<usize>)
+    {
+        let mut confirmed = Vec::new();
+        let mut rejected = Vec::new();
+        for &(id, (old_pos, new_pos)) in aps_update.iter() {
+            if id == NUM_AGENTS {
+                continue
+            } else if self.occupied[new_pos] == 0 || self.occupied[new_pos] == id + 1 {
+                self.occupied[new_pos] = id + 1;
+                self.occupied[old_pos] = 0;
+                self.aps.push(new_pos);
+                confirmed.push(id);
+            } else {
+                rejected.push(id);
+            }
+        }
+        (confirmed, rejected)
+    }
+}
+
+
 struct Simulation {
     sugar_capacity: na::DMatrix<usize>,
     sugar_grow_back_rate: usize,
     sugar_grow_back_interval: usize,
 }
 
-struct GlobalState {
-    sugar_dist: na::DMatrix<usize>,
-    agent_poss: Vec<(usize, usize)>,
-    tick: usize,
-}
-
 impl Simulation {
     fn update_global_state(&self, gs: &mut GlobalState) {
-        for &agent_pos in gs.agent_poss.iter() {
+        for &agent_pos in gs.aps.iter() {
             gs.sugar_dist[agent_pos] = 0;
         }
         gs.tick = (gs.tick+1) % self.sugar_grow_back_interval;
@@ -251,6 +342,7 @@ fn gen_sugar_capcity(
 
 struct Agent {
     pos: (usize, usize),
+    next_pos: (usize, usize),
     sugar: usize,
     sugar_metabolism: usize,
     vision: usize,
@@ -281,29 +373,38 @@ impl Agent {
         self.sugar > 0
     }
 
-    fn move_to(&mut self, sugar_dist: &na::DMatrix<usize>) -> (usize, usize) {
+    fn move_to(&mut self,
+               sugar_dist: &na::DMatrix<usize>,
+               occupied: &na::DMatrix<usize>) -> ((usize, usize), (usize, usize))
+    {
         let self_pos = self.pos.clone();
         let mut current_most = sugar_dist[self_pos];
         let mut min_d = 0;
         let mut possible_next_pos = vec![self_pos];
         for &pos in self.can_see(sugar_dist.nrows()-1, sugar_dist.ncols()-1).iter() {
-            let d = l1_distance(pos, self.pos);
-            if sugar_dist[pos] > current_most {
-                current_most = sugar_dist[pos];
-                min_d = d;
-                possible_next_pos = vec![pos];
-            } else if sugar_dist[pos] == current_most {
-                if d < min_d {
+            if occupied[pos] == 0 {
+                let d = l1_distance(pos, self.pos);
+                if sugar_dist[pos] > current_most {
+                    current_most = sugar_dist[pos];
                     min_d = d;
                     possible_next_pos = vec![pos];
-                } else if d == min_d {
-                    possible_next_pos.push(pos);
+                } else if sugar_dist[pos] == current_most {
+                    if d < min_d {
+                        min_d = d;
+                        possible_next_pos = vec![pos];
+                    } else if d == min_d {
+                        possible_next_pos.push(pos);
+                    }
                 }
             }
         }
-        self.pos = self.rng.choose(&possible_next_pos).unwrap().clone();
-        self.sugar += sugar_dist[self.pos.clone()];
-        self.pos
+        self.next_pos = self.rng.choose(&possible_next_pos).unwrap().clone();
+        (self.pos, self.next_pos)
+    }
+
+    fn update_pos_sugar(&mut self, sugar_dist: &na::DMatrix<usize>) {
+        self.pos = self.next_pos;
+        self.sugar += sugar_dist[self.next_pos];
     }
 }
 
@@ -335,7 +436,7 @@ fn update_window(
         let coord = grid.cell_position(cell);
         rectangle(color, [coord[0], coord[1], grid.units, grid.units], c.transform, g);
     }
-    for &agent_pos in gs.agent_poss.iter() {
+    for &agent_pos in gs.aps.iter() {
         let coord = grid.cell_position((agent_pos.0 as u32, agent_pos.1 as u32));
         ellipse(config.agent_color, 
                 [coord[0], coord[1], grid.units, grid.units], c.transform, g);

@@ -139,7 +139,7 @@ fn mpsc_signal_p () {
              .map(incr_counter)
              .and_then(emit_v)
              .repeat(10);
-    let p2 = s.await();
+    let p2 = s.await().map(|x| { println!("{:?}", x); x });
     assert_eq!(execute_process_parallel(p1.join(p2), 2), ((), (1..11).collect::<Vec<_>>()));
 }
 
