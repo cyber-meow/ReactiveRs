@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use runtime::ParallelRuntime;
-use continuation::ContinuationPl;
+use continuation::{Continuation, ContinuationPl};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
 use process::{join_all, JoinAll};
@@ -16,16 +16,20 @@ impl<P> ProcessPl for JoinAll<P> where P: ProcessPl {
     fn call<C>(mut self, runtime: &mut ParallelRuntime, next: C)
         where C: ContinuationPl<Self::Value>
     {
-        let joint_point = Arc::new(Mutex::new(JoinPoint::new(self.0.len(), next)));
-        while let Some(p) = self.0.pop() {
-            let p_id = self.0.len();
-            let joint_point = joint_point.clone();
-            let c = move |r: &mut ParallelRuntime, ()| {
-                p.call(r, move |r: &mut ParallelRuntime, v|
-                    joint_point.lock().unwrap().call_ref(r, (v, p_id)));
+        if self.0.is_empty() {
+            next.call(runtime, Vec::new());
+        } else {
+            let joint_point = Arc::new(Mutex::new(JoinPoint::new(self.0.len(), next)));
+            while let Some(p) = self.0.pop() {
+                let p_id = self.0.len();
+                let joint_point = joint_point.clone();
+                let c = move |r: &mut ParallelRuntime, ()| {
+                    p.call(r, move |r: &mut ParallelRuntime, v|
+                        joint_point.lock().unwrap().call_ref(r, (v, p_id)));
+                };
+                runtime.on_current_instant(Box::new(c));
             };
-            runtime.on_current_instant(Box::new(c));
-        };
+        }
     }
 }
 
@@ -37,16 +41,20 @@ impl<P> ProcessMutPl for JoinAll<P> where P: ProcessMutPl {
             let (ps, vs): (Vec<_>, Vec<_>) = pvs.into_iter().unzip();
             (join_all(ps), vs)
         });
-        let joint_point = Arc::new(Mutex::new(JoinPoint::new(self.0.len(), mut_next)));
-        while let Some(p) = self.0.pop() {
-            let p_id = self.0.len();
-            let joint_point = joint_point.clone();
-            let c = move |r: &mut ParallelRuntime, ()| {
-                p.call_mut(r, move |r: &mut ParallelRuntime, p_v|
-                    joint_point.lock().unwrap().call_ref(r, (p_v, p_id)));
+        if self.0.is_empty() {
+            mut_next.call(runtime, Vec::new());
+        } else {
+            let joint_point = Arc::new(Mutex::new(JoinPoint::new(self.0.len(), mut_next)));
+            while let Some(p) = self.0.pop() {
+                let p_id = self.0.len();
+                let joint_point = joint_point.clone();
+                let c = move |r: &mut ParallelRuntime, ()| {
+                    p.call_mut(r, move |r: &mut ParallelRuntime, p_v|
+                        joint_point.lock().unwrap().call_ref(r, (p_v, p_id)));
+                };
+                runtime.on_current_instant(Box::new(c));
             };
-            runtime.on_current_instant(Box::new(c));
-        };
+        }
     }
 }
 

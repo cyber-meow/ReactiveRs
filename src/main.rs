@@ -1,4 +1,8 @@
+#![type_length_limit="2097152"]
+
 extern crate piston_window;
+extern crate find_folder;
+extern crate gfx_device_gl;
 extern crate rand;
 extern crate nalgebra as na;
 extern crate reactive;
@@ -7,6 +11,7 @@ use std::{cmp, f64};
 use std::sync::{Arc, Mutex, Condvar};
 use piston_window::*;
 use rand::{Rng, XorShiftRng, weak_rng};
+use rand::distributions::{Normal, IndependentSample};
 
 use reactive::process::{Process, ProcessMut};
 use reactive::process::{value_proc, join_all};
@@ -17,16 +22,11 @@ use reactive::signal::parallel::{SpmcSignalPl, MpmcSignalPl};
 
 const WIDTH: usize = 80;
 const HEIGHT: usize = 60;
-const NUM_AGENTS: usize = 50;
+const NUM_AGENTS: usize = 80;
 const MAX_SUGAR: usize = 6;
+const FETILITY_AGE: (usize, usize) = (15, 60);
 
 fn main() {
-
-    let display_config = DisplayConfig {
-        max_sugar: 6,
-        sugar_color: [1.0, 0.7, 0.1, 1.0],
-        agent_color: [0.2, 0.1, 1.0, 0.6],
-    };
 
     let sugar_dist = gen_sugar_capcity(
         vec![(7, 10), (23, 46), (52, 33)], MAX_SUGAR, 
@@ -52,8 +52,8 @@ fn main() {
 
     let gs = GlobalState {
         sugar_dist: sugar_dist,
-        occupied: na::DMatrix::from_element(80, 60, 0),
-        aps: init_aps.clone(),
+        occupied: na::DMatrix::from_element(WIDTH, HEIGHT, 0),
+        ag_info: Vec::new(),
         tick: 0,
     };
 
@@ -68,8 +68,8 @@ fn main() {
     let tick = SpmcSignalPl::new();
     let tick_rev = tick.clone();
     
-    let aps_signal = MpmcSignalPl::default();
-    let aps_signal_rev = aps_signal.clone();
+    let ag_info_signal = MpmcSignalPl::default();
+    let ag_info_signal_rev = ag_info_signal.clone();
 
     let mut confirm = Vec::new();
     for _ in 0..NUM_AGENTS {
@@ -78,30 +78,34 @@ fn main() {
 
     let mut agents = Vec::new();
 
+    let agent_init = AgentInit {
+        init_sugar_range: (40, 61),
+        sugar_metabolism_range: (3, 7),
+        max_age_range: (31, 101),
+        vision_range: (2, 6),
+    };
+
     for (i, &agent_pos) in init_aps.iter().enumerate() {
         let pos = (agent_pos.0 as usize, agent_pos.1 as usize);
-        let ag = Agent {
-            pos: pos,
-            next_pos: pos,
-            sugar: 10,
-            sugar_metabolism: 3,
-            vision: 4,
-            rng: weak_rng(),
-        };
+
+        let mut gs_lock = gs.lock().unwrap();
+        let ag = agent_init.gen_agent(pos, &gs_lock.sugar_dist);
+        gs_lock.ag_info.push((agent_pos, ag.sugar, ag.status()));
+        drop(gs_lock);
         let ag = Arc::new(Mutex::new(ag));
 
         let occupied_rev = occupied_rev.clone();
         let confirm = confirm[i].clone();
-        let aps_signal = aps_signal.clone();
+        let ag_info_signal = ag_info_signal.clone();
         let ag_cl = ag.clone();
         
         let agent_alive = move |sugar_dist: Arc<na::DMatrix<usize>>| {
             let ag_cl2 = ag_cl.clone();
-            let aps_signal = aps_signal.clone();
+            let ag_info_signal = ag_info_signal.clone();
             let sd_cl = sugar_dist.clone();
             let seek_next_pos = move |occupied: Arc<na::DMatrix<usize>>| {
                 let agent_pos_update = ag_cl2.lock().unwrap().move_to(&sd_cl, &occupied);
-                aps_signal.emit((i, agent_pos_update))
+                ag_info_signal.emit((i, agent_pos_update))
             };
             let ag_cl2 = ag_cl.clone();
             let update_ag_pos = move |()| {
@@ -139,6 +143,16 @@ fn main() {
         agents.push(agent_proc);
     }
 
+    // To ensure that the program doesn't hangs when all the agents die.
+    let tick_rev_cl = tick_rev.clone();
+    let emit_on_ag_info_signal = 
+        ag_info_signal
+        .emit((NUM_AGENTS, ((0, 0), (0, 0), 0, (Gender::Male, Growth::Child))))
+        .pause()
+        .then(tick_rev_cl.await())
+        .if_else(value_proc(Continue), value_proc(Exit(())))
+        .while_proc();
+
     let gs_cl = gs.clone();
     let broadcast_sugar_dist = move |()| {
         sim.update_global_state(&mut *gs_cl.lock().unwrap());
@@ -147,7 +161,7 @@ fn main() {
     };
 
     let gs_cl = gs.clone();
-    let reset_aps = move |()| gs_cl.lock().unwrap().aps = Vec::new();
+    let reset_ag_info = move |()| gs_cl.lock().unwrap().instant_reset();
 
     let gs_cl = gs.clone();
     let collision_detect = move |aps_update| {
@@ -167,10 +181,11 @@ fn main() {
         occupied.emit(Arc::new(occup))
     };
 
+
     let update_aps =
         value_proc(())
         .and_then(broadcast_occupied)
-        .then(aps_signal_rev.await())
+        .then(ag_info_signal_rev.await())
         .and_then(collision_detect)
         .while_proc();
 
@@ -178,7 +193,7 @@ fn main() {
         value_proc(())
         .and_then(broadcast_sugar_dist)
         .then(tick_rev.await())
-        .if_else(value_proc(()).map(reset_aps).then(update_aps), value_proc(Exit(())))
+        .if_else(value_proc(()).map(reset_ag_info).then(update_aps), value_proc(Exit(())))
         .while_proc();
 
     let simulation_updated = Arc::new((Mutex::new(false), Condvar::new()));
@@ -215,11 +230,24 @@ fn main() {
         .while_proc();
     
     let mut window: PistonWindow = 
-        WindowSettings::new("Hello", ((WIDTH as u32)*10, (HEIGHT as u32)*10))
+        WindowSettings::new("Sugarscape", ((WIDTH as u32 + 27) * 10, HEIGHT as u32 * 10))
         .exit_on_esc(true)
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
     window.set_max_fps(8);
+
+    let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+    let ref font = assets.join("FiraSans-Regular.ttf");
+    let factory = window.factory.clone();
+    let glyphs = Glyphs::new(font, factory, TextureSettings::new()).unwrap();
+    
+    let mut display_config = DisplayConfig {
+        max_sugar: MAX_SUGAR,
+        sugar_color: [1.0, 0.7, 0.1, 1.0],
+        agent_male_color: [0.2, 0.1, 1.0, 0.9],
+        agent_female_color: [1.0, 0.2, 0.0, 0.9],
+        cache: glyphs,
+    };
 
     let update_window_clos = || {
         let mut window_updated_local = true;
@@ -234,8 +262,7 @@ fn main() {
                 window_updated_local = false;
             }
             window.draw_2d(&e, |c, g| {
-                clear(color::WHITE, g);
-                update_window(c, g, &gs.lock().unwrap(), &display_config, &grid);
+                update_window(c, g, &gs.lock().unwrap(), &mut display_config, &grid);
                 window_updated_local = true;
             });
             if window_updated_local {
@@ -252,7 +279,11 @@ fn main() {
     let agents_proc = join_all(agents);
 
     execute_process_parallel_with_main(
-        update_window_clos, update_patches.join(inform_updated).join(agents_proc), 4);
+        update_window_clos,
+        update_patches
+        .join(inform_updated)
+        .join(agents_proc)
+        .join(emit_on_ag_info_signal), 4);
 }
 
 #[derive(PartialEq)]
@@ -262,33 +293,40 @@ enum WindowUpdated {
     End,
 }
 
+type Pos = (usize, usize);
+type SugarAmount = usize;
+
 struct GlobalState {
     sugar_dist: na::DMatrix<usize>,
     occupied: na::DMatrix<usize>,
-    aps: Vec<(usize, usize)>,
+    ag_info: Vec<(Pos, SugarAmount, AgentStatus)>,
     tick: usize,
 }
 
 impl GlobalState {
-    fn update_aps(
-        &mut self, aps_update: Vec<(usize, ((usize, usize), (usize, usize)))>)
-        -> (Vec<usize>, Vec<usize>)
+    fn update_aps(&mut self,
+                  aps_update: Vec<(usize, (Pos, Pos, SugarAmount, AgentStatus))>
+                 ) -> (Vec<usize>, Vec<usize>)
     {
         let mut confirmed = Vec::new();
         let mut rejected = Vec::new();
-        for &(id, (old_pos, new_pos)) in aps_update.iter() {
+        for &(id, (old_pos, new_pos, new_sugar, ag_status)) in aps_update.iter() {
             if id == NUM_AGENTS {
                 continue
             } else if self.occupied[new_pos] == 0 || self.occupied[new_pos] == id + 1 {
                 self.occupied[new_pos] = id + 1;
                 self.occupied[old_pos] = 0;
-                self.aps.push(new_pos);
+                self.ag_info.push((new_pos, new_sugar, ag_status));
                 confirmed.push(id);
             } else {
                 rejected.push(id);
             }
         }
         (confirmed, rejected)
+    }
+
+    fn instant_reset(&mut self) {
+        self.ag_info = Vec::new();
     }
 }
 
@@ -301,7 +339,7 @@ struct Simulation {
 
 impl Simulation {
     fn update_global_state(&self, gs: &mut GlobalState) {
-        for &agent_pos in gs.aps.iter() {
+        for &(agent_pos, _, _) in gs.ag_info.iter() {
             gs.sugar_dist[agent_pos] = 0;
         }
         gs.tick = (gs.tick+1) % self.sugar_grow_back_interval;
@@ -340,13 +378,41 @@ fn gen_sugar_capcity(
     na::DMatrix::from_fn(width, height, decide_sugar_amount)
 }
 
+#[derive(Copy, Clone)]
+enum Growth {
+    Child,
+    Fertile,
+    Aged,
+}
+
+#[derive(Copy, Clone)]
+enum Gender {
+    Male,
+    Female,
+}
+
+type AgentStatus = (Gender, Growth);
+
+impl Gender {
+    fn rand_gender() -> Gender {
+        if weak_rng().gen_weighted_bool(2) {
+            Gender::Male
+        } else {
+            Gender::Female
+        }
+    }
+}
+
 struct Agent {
     pos: (usize, usize),
     next_pos: (usize, usize),
+    init_sugar: usize,
     sugar: usize,
     sugar_metabolism: usize,
     vision: usize,
-    rng: XorShiftRng,
+    age: usize,
+    max_age: usize,
+    gender: Gender,
 }
 
 fn l1_distance(pos1: (usize, usize), pos2: (usize, usize)) -> usize {
@@ -354,6 +420,8 @@ fn l1_distance(pos1: (usize, usize), pos2: (usize, usize)) -> usize {
     let y_dist = cmp::max(pos1.1, pos2.1) - cmp::min(pos1.1, pos2.1);
     x_dist + y_dist
 }
+
+/* Defines the agents. */
 
 impl Agent {
     fn can_see(&self, max_width: usize, max_height: usize) -> Vec<(usize, usize)> {
@@ -370,12 +438,24 @@ impl Agent {
     /// Returns a boolean to indiacate if the agent is still alive.
     fn metabolise(&mut self) -> bool {
         self.sugar = self.sugar.saturating_sub(self.sugar_metabolism);
-        self.sugar > 0
+        self.age += 1;
+        self.sugar > 0 && self.age <= self.max_age
+    }
+
+    fn status(&self) -> AgentStatus {
+        if self.age < FETILITY_AGE.0 {
+            (self.gender, Growth::Child)
+        } else if self.age >= FETILITY_AGE.1 {
+            (self.gender, Growth::Aged)
+        } else {
+            (self.gender, Growth::Fertile)
+        }
     }
 
     fn move_to(&mut self,
                sugar_dist: &na::DMatrix<usize>,
-               occupied: &na::DMatrix<usize>) -> ((usize, usize), (usize, usize))
+               occupied: &na::DMatrix<usize>
+              ) -> (Pos, Pos, SugarAmount, AgentStatus)
     {
         let self_pos = self.pos.clone();
         let mut current_most = sugar_dist[self_pos];
@@ -398,8 +478,9 @@ impl Agent {
                 }
             }
         }
-        self.next_pos = self.rng.choose(&possible_next_pos).unwrap().clone();
-        (self.pos, self.next_pos)
+        self.next_pos = weak_rng().choose(&possible_next_pos).unwrap().clone();
+        let next_sugar = self.sugar + sugar_dist[self.next_pos];
+        (self.pos, self.next_pos, next_sugar, self.status())
     }
 
     fn update_pos_sugar(&mut self, sugar_dist: &na::DMatrix<usize>) {
@@ -408,13 +489,55 @@ impl Agent {
     }
 }
 
-struct DisplayConfig {
-    max_sugar: usize,
-    sugar_color: types::Color,
-    agent_color: types::Color,
+struct AgentInit {
+    init_sugar_range: (usize, usize),
+    sugar_metabolism_range: (usize, usize),
+    max_age_range: (usize, usize),
+    vision_range: (usize, usize),
 }
 
-impl DisplayConfig {
+fn gen_normal(range: (usize, usize)) -> usize {
+    let (low, high) = (range.0 as f64, range.1 as f64);
+    let mean = (low + high) / 2.0;
+    let std = (high - low) / 4.0;
+    let normal = Normal::new(mean, std);
+    let mut rng = weak_rng();
+    let mut v = normal.ind_sample(&mut rng);
+    while v >= high || v < low {
+        v = normal.ind_sample(&mut rng);
+    }
+    v.floor() as usize
+}
+
+impl AgentInit {
+    fn gen_agent(&self, pos: (usize, usize), sugar_dist: &na::DMatrix<usize>) -> Agent {
+        let init_sugar = gen_normal(self.init_sugar_range);
+        Agent {
+            pos: pos,
+            next_pos: pos,
+            init_sugar: init_sugar,
+            sugar: init_sugar + sugar_dist[pos],
+            sugar_metabolism: gen_normal(self.sugar_metabolism_range),
+            vision: gen_normal(self.vision_range),
+            age: 0,
+            max_age: gen_normal(self.max_age_range),
+            gender: Gender::rand_gender(),
+            rng: weak_rng()
+        }
+    }
+}
+
+/* Shows the window */
+
+struct DisplayConfig<C: character::CharacterCache> {
+    max_sugar: usize,
+    sugar_color: types::Color,
+    agent_male_color: types::Color,
+    agent_female_color: types::Color,
+    cache: C,
+}
+
+impl<C> DisplayConfig<C> where C: character::CharacterCache {
     fn compute_cell_color(&self, sugar_amount: usize) -> types::Color {
         assert!(sugar_amount <= self.max_sugar,
                 "The maximum sugar capacity is depassed!");
@@ -423,22 +546,52 @@ impl DisplayConfig {
     }
 }
 
-fn update_window(
+fn update_window<C>(
     c: Context,
     g: &mut G2d,
     gs: &GlobalState,
-    config: &DisplayConfig,
+    config: &mut DisplayConfig<C>,
     grid: &grid::Grid)
+where 
+    C: character::CharacterCache<Texture=Texture<gfx_device_gl::Resources>>,
+    C::Error: std::fmt::Debug,
 {
+    clear(color::WHITE, g);
     for cell in grid.cells() {
         let color = config.compute_cell_color(
             gs.sugar_dist[(cell.0 as usize, cell.1 as usize)]);
         let coord = grid.cell_position(cell);
         rectangle(color, [coord[0], coord[1], grid.units, grid.units], c.transform, g);
     }
-    for &agent_pos in gs.aps.iter() {
+    for &(agent_pos, _, agent_status) in gs.ag_info.iter() {
         let coord = grid.cell_position((agent_pos.0 as u32, agent_pos.1 as u32));
-        ellipse(config.agent_color, 
-                [coord[0], coord[1], grid.units, grid.units], c.transform, g);
+        let color = match agent_status.0 {
+            Gender::Male => config.agent_male_color,
+            Gender::Female => config.agent_female_color,
+        };
+        let color = match agent_status.1 {
+            Growth::Child => color.mul_rgba(1.0, 1.0, 1.0, 0.7),
+            Growth::Fertile => color,
+            Growth::Aged => color.shade(0.3),
+        };
+        ellipse(color, [coord[0], coord[1], grid.units, grid.units], c.transform, g);
     }
+    let transform = c.transform.trans(WIDTH as f64 * 10.0, 0.0);
+    rectangle([0.0, 0.0, 0.0, 0.85], [0.0, 0.0, 270.0, HEIGHT as f64 * 10.0], transform, g);
+    line([0.0, 0.0, 0.0, 1.0], 2.0, [0.0, 0.0, 0.0, HEIGHT as f64 * 10.0], transform, g);
+    let transform = transform.trans(25.0, 50.0);
+    text(color::WHITE, 28, "Number of Agents", &mut config.cache, transform, g).unwrap();
+    let transform = transform.trans(0.0, 35.0);
+    let num_of_agents = format!("{}", gs.ag_info.len());
+    text(color::WHITE, 28, &num_of_agents, &mut config.cache, transform, g).unwrap();
+    let transform = transform.trans(0.0, 40.0);
+    text(color::WHITE, 28, "Board Sugar", &mut config.cache, transform, g).unwrap();
+    let transform = transform.trans(0.0, 35.0);
+    let total_sugar_board = format!("{}", gs.sugar_dist.iter().fold(0, |sum, &i| sum+i));
+    text(color::WHITE, 28, &total_sugar_board, &mut config.cache, transform, g).unwrap();
+    let transform = transform.trans(0.0, 40.0);
+    text(color::WHITE, 28, "Agent Sugar", &mut config.cache, transform, g).unwrap();
+    let transform = transform.trans(0.0, 35.0);
+    let total_sugar_agents = format!("{}", gs.ag_info.iter().fold(0, |sum, &(_, s, _)| sum+s));
+    text(color::WHITE, 28, &total_sugar_agents, &mut config.cache, transform, g).unwrap();
 }

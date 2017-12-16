@@ -9,6 +9,8 @@ crossbeam = "0.3.0"
 rand = "0.3"
 ordermap = "0.3.2"
 piston_window = "0.74.0"
+find_folder = "*"
+gfx_device_gl = "0.14.6"
 nalgebra = "0.13"
 
 [features]

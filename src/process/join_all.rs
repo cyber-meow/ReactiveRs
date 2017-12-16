@@ -2,7 +2,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 use runtime::SingleThreadRuntime;
-use continuation::ContinuationSt;
+use continuation::{Continuation, ContinuationSt};
 use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 
 /// Creates a process that executes a collection of processes in parallel and collects
@@ -31,14 +31,18 @@ impl <P> ProcessSt for JoinAll<P> where P: ProcessSt {
     fn call<C>(mut self, runtime: &mut SingleThreadRuntime, next: C)
         where C: ContinuationSt<Self::Value>
     {
-        let joint_point = Rc::new(RefCell::new(JoinPoint::new(self.0.len(), next)));
-        while let Some(p) = self.0.pop() {
-            let p_id = self.0.len();
-            let joint_point = joint_point.clone();
-            p.call(
-                runtime,
-                move |r: &mut SingleThreadRuntime, v|
-                    joint_point.borrow_mut().call_ref(r, (v, p_id)));
+        if self.0.is_empty() {
+            next.call(runtime, Vec::new());
+        } else {
+            let joint_point = Rc::new(RefCell::new(JoinPoint::new(self.0.len(), next)));
+            while let Some(p) = self.0.pop() {
+                let p_id = self.0.len();
+                let joint_point = joint_point.clone();
+                p.call(
+                    runtime,
+                    move |r: &mut SingleThreadRuntime, v|
+                        joint_point.borrow_mut().call_ref(r, (v, p_id)));
+            }
         }
     }
 }
@@ -51,14 +55,18 @@ impl<P> ProcessMutSt for JoinAll<P> where P: ProcessMutSt {
             let (ps, vs): (Vec<_>, Vec<_>) = pvs.into_iter().unzip();
             (join_all(ps), vs)
         });
-        let joint_point = Rc::new(RefCell::new(JoinPoint::new(self.0.len(), mut_next)));
-        while let Some(p) = self.0.pop() {
-            let p_id = self.0.len();
-            let joint_point = joint_point.clone();
-            p.call_mut(
-                runtime,
-                move |r: &mut SingleThreadRuntime, p_v|
-                    joint_point.borrow_mut().call_ref(r, (p_v, p_id)));
+        if self.0.is_empty() {
+            mut_next.call(runtime, Vec::new());
+        } else {
+            let joint_point = Rc::new(RefCell::new(JoinPoint::new(self.0.len(), mut_next)));
+            while let Some(p) = self.0.pop() {
+                let p_id = self.0.len();
+                let joint_point = joint_point.clone();
+                p.call_mut(
+                    runtime,
+                    move |r: &mut SingleThreadRuntime, p_v|
+                        joint_point.borrow_mut().call_ref(r, (p_v, p_id)));
+            }
         }
     }
 }
