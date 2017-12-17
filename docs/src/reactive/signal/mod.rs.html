@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="Source to the Rust file `src/signal/mod.rs`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang">
+
+    <title>mod.rs.html -- source</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc source">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><pre class="line-numbers"><span id="1"> 1</span>
+<span id="2"> 2</span>
+<span id="3"> 3</span>
+<span id="4"> 4</span>
+<span id="5"> 5</span>
+<span id="6"> 6</span>
+<span id="7"> 7</span>
+<span id="8"> 8</span>
+<span id="9"> 9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+</pre><pre class="rust ">
+<span class="doccomment">//! Inter-process communication depends on the use of signals.</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! Four kinds of signals are defined: `PureSignal`, `MpmcSignal`,</span>
+<span class="doccomment">//! `MpscSignal` and `SpmcSignal`.</span>
+<span class="doccomment">//! Except for `PureSignal`, all signals are emitted with some value and</span>
+<span class="doccomment">//! store some value which can be communicated.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! We should notice that the implementaion for `MpscSignal` and `SpmcSignal`</span>
+<span class="doccomment">//! may not be very satisfactory. We can imagine having some sender or</span>
+<span class="doccomment">//! receiver for a signal and it is consumed once used.</span>
+<span class="doccomment">//! However, this means that the signal can only be emitted or awaited in</span>
+<span class="doccomment">//! one place in the code, and this is not what I look for.</span>
+<span class="doccomment">//! The goal is to force the signal to be emitted or consumed only once at</span>
+<span class="doccomment">//! each instant, but not only once in the whole program. Since I have no idea</span>
+<span class="doccomment">//! how this can be down at compile time, what I did finally is to check this</span>
+<span class="doccomment">//! dynamically. The program panics when some undesired behavior is detected.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! On the other hand, the signals used for the non-parallel and the parallel</span>
+<span class="doccomment">//! version of the library are different, so the user must decide which sort</span>
+<span class="doccomment">//! of signal (the parallel or no-parallel ones) to use from the beginning.</span>
+<span class="doccomment">//! I would love to have something like in the case of processes: the real </span>
+<span class="doccomment">//! behavior of the signal is only determined when it&#39;s associated with some</span>
+<span class="doccomment">//! particular runtime, but I didn&#39;t find a way to do this.</span>
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">signal_runtime</span>;
+
+<span class="kw">mod</span> <span class="ident">await_immediate</span>;
+<span class="kw">mod</span> <span class="ident">present_else</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">await_immediate</span>::<span class="ident">AwaitImmediate</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">present_else</span>::<span class="ident">PresentElse</span>;
+
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">pure_signal</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">valued_signal</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">pure_signal</span>::<span class="ident">PureSignal</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">valued_signal</span>::<span class="ident">ValuedSignal</span>;
+
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">parallel</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">single_thread</span>;
+
+<span class="kw">use</span> <span class="ident">process</span>::<span class="ident">Process</span>;
+
+<span class="doccomment">/// A reactive signal.  </span>
+<span class="doccomment">/// The signal implement the trait `Clone` to assure that it can be used multiple times</span>
+<span class="doccomment">/// in the program. However, note that for most of the constructions `clone` is used</span>
+<span class="doccomment">/// implicitly so one can pass the signal directly.</span>
+<span class="doccomment">/// The user needs to call `clone` explicitly only in scenarios where the signal&#39;s</span>
+<span class="doccomment">/// ownership must be shared in different places, ex: closure.</span>
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Signal</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="lifetime">&#39;static</span> {
+    <span class="doccomment">/// The runtime reference type associated with the signal.</span>
+    <span class="kw">type</span> <span class="ident">RuntimeRef</span>;
+    
+    <span class="doccomment">/// Returns a reference to the signal&#39;s runtime.</span>
+    <span class="kw">fn</span> <span class="ident">runtime</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">RuntimeRef</span>;
+    
+    <span class="doccomment">/// Returns a process that waits for the next emission of the signal, current instant</span>
+    <span class="doccomment">/// included.</span>
+    <span class="kw">fn</span> <span class="ident">await_immediate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">AwaitImmediate</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="self">Self</span>: <span class="ident">Sized</span> {
+        <span class="ident">AwaitImmediate</span>(<span class="self">self</span>.<span class="ident">clone</span>())
+    }
+    
+    <span class="doccomment">/// Test the status of a signal `s`. If the signal is present, the process `p1`</span>
+    <span class="doccomment">/// is executed instantaneously, other wise `p2` is executed at the following instant.</span>
+    <span class="kw">fn</span> <span class="ident">present_else</span><span class="op">&lt;</span><span class="ident">P1</span>, <span class="ident">P2</span>, <span class="ident">V</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">p1</span>: <span class="ident">P1</span>, <span class="ident">p2</span>: <span class="ident">P2</span>) <span class="op">-&gt;</span> <span class="ident">PresentElse</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">P1</span>, <span class="ident">P2</span><span class="op">&gt;</span>
+        <span class="kw">where</span> <span class="self">Self</span>: <span class="ident">Sized</span>, <span class="ident">P1</span>: <span class="ident">Process</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">=</span><span class="ident">V</span><span class="op">&gt;</span>, <span class="ident">P2</span>: <span class="ident">Process</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">=</span><span class="ident">V</span><span class="op">&gt;</span>
+    {
+        <span class="ident">PresentElse</span> {
+            <span class="ident">signal</span>: <span class="self">self</span>.<span class="ident">clone</span>(),
+            <span class="ident">present_proc</span>: <span class="ident">p1</span>,
+            <span class="ident">else_proc</span>: <span class="ident">p2</span>,
+        }
+    }
+}
+</pre>
+</section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "reactive";
+    </script>
+    <script src="../../../main.js"></script>
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

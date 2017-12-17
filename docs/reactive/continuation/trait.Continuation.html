@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Continuation` trait in crate `reactive`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Continuation">
+
+    <title>reactive::continuation::Continuation - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc trait">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'>Trait Continuation</p><div class="block items"><ul><li><a href="#required-methods">Required Methods</a></li><li><a href="#provided-methods">Provided Methods</a></li><li><a href="#implementors">Implementors</a></li></ul></div><p class='location'><a href='../index.html'>reactive</a>::<wbr><a href='index.html'>continuation</a></p><script>window.sidebarCurrent = {name: 'Continuation', ty: 'trait', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content">
+<h1 class='fqn'><span class='in-band'>Trait <a href='../index.html'>reactive</a>::<wbr><a href='index.html'>continuation</a>::<wbr><a class="trait" href=''>Continuation</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/reactive/continuation/mod.rs.html#17-38' title='goto source code'>[src]</a></span></h1>
+<pre class='rust trait'>pub trait Continuation&lt;R, V&gt;: 'static <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;R: <a class="trait" href="../../reactive/runtime/trait.Runtime.html" title="trait reactive::runtime::Runtime">Runtime</a>,&nbsp;</span>{
+    fn <a href='#tymethod.call' class='fnname'>call</a>(self, runtime: &amp;mut R, value: V);
+<div class='item-spacer'></div>    fn <a href='#tymethod.call_box' class='fnname'>call_box</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;, runtime: &amp;mut R, value: V);
+
+    fn <a href='#method.map' class='fnname'>map</a>&lt;F, V2&gt;(self, map: F) -&gt; <a class="struct" href="../../reactive/continuation/struct.Map.html" title="struct reactive::continuation::Map">Map</a>&lt;Self, F&gt;<br>&nbsp;&nbsp;&nbsp; <span class="where">where<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(V2) -&gt; V + 'static</span>,
+    { ... }
+<div class='item-spacer'></div>    fn <a href='#method.pause' class='fnname'>pause</a>(self) -&gt; <a class="struct" href="../../reactive/continuation/struct.Pause.html" title="struct reactive::continuation::Pause">Pause</a>&lt;Self&gt;<br>&nbsp;&nbsp;&nbsp; <span class="where">where<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a></span>,
+    { ... }
+}</pre><div class='docblock'><p>A reactive continuation awaiting a value of type <code>V</code>. For the sake of simplicity,
+continuation must be valid on the static lifetime.</p>
+</div>
+            <h2 id='required-methods'>Required Methods</h2>
+            <div class='methods'>
+        <h3 id='tymethod.call' class='method'><span id='call.v' class='invisible'><code>fn <a href='#tymethod.call' class='fnname'>call</a>(self, runtime: &amp;mut R, value: V)</code></span></h3><div class='docblock'><p>Calls the continuation.</p>
+</div><h3 id='tymethod.call_box' class='method'><span id='call_box.v' class='invisible'><code>fn <a href='#tymethod.call_box' class='fnname'>call_box</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;, runtime: &amp;mut R, value: V)</code></span></h3><div class='docblock'><p>Calls the continuation. Works even if the continuation is boxed.</p>
+
+<p>This is necessary because the size of a value must be known to unbox it. It is
+thus impossible to take the ownership of a <code>Box&lt;Continuation&gt;</code> whitout knowing the
+underlying type of the <code>Continuation</code>.</p>
+</div></div>
+            <h2 id='provided-methods'>Provided Methods</h2>
+            <div class='methods'>
+        <h3 id='method.map' class='method'><span id='map.v' class='invisible'><code>fn <a href='#method.map' class='fnname'>map</a>&lt;F, V2&gt;(self, map: F) -&gt; <a class="struct" href="../../reactive/continuation/struct.Map.html" title="struct reactive::continuation::Map">Map</a>&lt;Self, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(V2) -&gt; V + 'static,&nbsp;</span></code></span></h3><div class='docblock'><p>Creates a new continuation that applies a function to the input value before
+calling <code>Self</code>.</p>
+</div><h3 id='method.pause' class='method'><span id='pause.v' class='invisible'><code>fn <a href='#method.pause' class='fnname'>pause</a>(self) -&gt; <a class="struct" href="../../reactive/continuation/struct.Pause.html" title="struct reactive::continuation::Pause">Pause</a>&lt;Self&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h3><div class='docblock'><p>Create a new continuation that calls <code>Self</code> in the next instant.</p>
+</div></div>
+        <h2 id='implementors'>Implementors</h2>
+        <ul class='item-list' id='implementors-list'>
+    <li><code>impl&lt;R, C, F, V1, V2&gt; Continuation&lt;R, V1&gt; for <a class="struct" href="../../reactive/continuation/struct.Map.html" title="struct reactive::continuation::Map">Map</a>&lt;C, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;R: <a class="trait" href="../../reactive/runtime/trait.Runtime.html" title="trait reactive::runtime::Runtime">Runtime</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;C: <a class="trait" href="../../reactive/continuation/trait.Continuation.html" title="trait reactive::continuation::Continuation">Continuation</a>&lt;R, V2&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(V1) -&gt; V2 + 'static,&nbsp;</span></code></li>
+<li><code>impl&lt;C, V&gt; Continuation&lt;<a class="struct" href="../../reactive/runtime/struct.SingleThreadRuntime.html" title="struct reactive::runtime::SingleThreadRuntime">SingleThreadRuntime</a>, V&gt; for <a class="struct" href="../../reactive/continuation/struct.Pause.html" title="struct reactive::continuation::Pause">Pause</a>&lt;C&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;C: <a class="trait" href="../../reactive/continuation/trait.ContinuationSt.html" title="trait reactive::continuation::ContinuationSt">ContinuationSt</a>&lt;V&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;V: 'static,&nbsp;</span></code></li>
+<li><code>impl&lt;C, V&gt; Continuation&lt;<a class="struct" href="../../reactive/runtime/struct.ParallelRuntime.html" title="struct reactive::runtime::ParallelRuntime">ParallelRuntime</a>, V&gt; for <a class="struct" href="../../reactive/continuation/struct.Pause.html" title="struct reactive::continuation::Pause">Pause</a>&lt;C&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;C: <a class="trait" href="../../reactive/continuation/trait.ContinuationPl.html" title="trait reactive::continuation::ContinuationPl">ContinuationPl</a>&lt;V&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;V: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,&nbsp;</span></code></li>
+<li><code>impl&lt;R, V, F&gt; Continuation&lt;R, V&gt; for F <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;R: <a class="trait" href="../../reactive/runtime/trait.Runtime.html" title="trait reactive::runtime::Runtime">Runtime</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut R, V) + 'static,&nbsp;</span></code></li>
+</ul><script type="text/javascript" async
+                         src="../../implementors/reactive/continuation/trait.Continuation.js">
+                 </script></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "reactive";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>
