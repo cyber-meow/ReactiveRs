@@ -2,6 +2,7 @@ use runtime::{Runtime, SingleThreadRuntime, ParallelRuntime};
 use continuation::{ContinuationSt, ContinuationPl};
 use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
+use signal::signal_runtime::SignalRuntimeRefBase;
 use signal::ValuedSignal;
 
 /// Process that represents an emission of a signal with some value.
@@ -16,9 +17,19 @@ impl<S, A> Process for EmitValue<S, A> where S: ValuedSignal, A: 'static {
 
 impl<S, A> ProcessMut for EmitValue<S, A> where S: ValuedSignal, A: 'static {}
 
-pub trait CanEmit<R, A> where R: Runtime {
+pub trait CanEmit<R, A>: SignalRuntimeRefBase<R> where R: Runtime {
     /// Emits the value `emitted` to the signal.
     fn emit(&mut self, runtime: &mut R, emitted: A);
+    
+    /// Tries to emit a signal and indicates the emission is successful.
+    fn try_emit(&mut self, runtime: &mut R, emitted: A) -> bool {
+        if self.is_emitted() {
+            false
+        } else {
+            self.emit(runtime, emitted);
+            true
+        }
+    }
 }
 
 // Non-parallel
