@@ -36,5 +36,10 @@ Sugarscape model. For the moment being I only include the basic moving rule and
 the reproduction rule but I may add other features later. To run the model,
 just type `cargo run --example sugarscape`.
 
-![Sugarscape 1](https://i.imgur.com/GVvmkwU.png)
-![Sugarscape 2](https://i.imgur.com/JFZFdzk.png)
+The beginning of the simulation:
+
+<img src="https://imgur.com/721tjkz.png" alt="Sugarscape1" width="600">
+
+After some time:
+
+<img src="https://imgur.com/HoWkwSE.png" alt="Sugarscape2" width="600">
