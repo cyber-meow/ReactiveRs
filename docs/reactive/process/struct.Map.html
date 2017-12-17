@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Map` struct in crate `reactive`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Map">
+
+    <title>reactive::process::Map - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc struct">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'>Struct Map</p><div class="block items"><ul><li><a href="#implementations">Trait Implementations</a></li></ul></div><p class='location'><a href='../index.html'>reactive</a>::<wbr><a href='index.html'>process</a></p><script>window.sidebarCurrent = {name: 'Map', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>reactive</a>::<wbr><a href='index.html'>process</a>::<wbr><a class="struct" href=''>Map</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/reactive/process/map.rs.html#7' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Map&lt;P, F&gt; { /* fields omitted */ }</pre><div class='docblock'><p>A process that applies a function to the returned value of another process.</p>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl&lt;P, F, V&gt; <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a> for <a class="struct" href="../../reactive/process/struct.Map.html" title="struct reactive::process::Map">Map</a>&lt;P, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(P::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>) -&gt; V + 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/reactive/process/map.rs.html#9-13' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Value' class="type"><span id='Value.t' class='invisible'><code>type <a href='../../reactive/process/trait.Process.html#associatedtype.Value' class="type">Value</a> = V</code></span></h4>
+<div class='docblock'><p>The value created by the process.</p>
+</div><h4 id='method.pause' class="method"><span id='pause.v' class='invisible'><code>fn <a href='../../reactive/process/trait.Process.html#method.pause' class='fnname'>pause</a>(self) -&gt; <a class="struct" href="../../reactive/process/struct.Pause.html" title="struct reactive::process::Pause">Pause</a>&lt;Self&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Suspends the execution of a process until next instant.</p>
+</div><h4 id='method.map' class="method"><span id='map.v' class='invisible'><code>fn <a href='../../reactive/process/trait.Process.html#method.map' class='fnname'>map</a>&lt;F, V&gt;(self, map: F) -&gt; <a class="struct" href="../../reactive/process/struct.Map.html" title="struct reactive::process::Map">Map</a>&lt;Self, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(Self::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>) -&gt; V + 'static,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Applies a function to the value returned by the process before passing it to its continuation. <a href="../../reactive/process/trait.Process.html#method.map">Read more</a></p>
+</div><h4 id='method.flatten' class="method"><span id='flatten.v' class='invisible'><code>fn <a href='../../reactive/process/trait.Process.html#method.flatten' class='fnname'>flatten</a>(self) -&gt; <a class="struct" href="../../reactive/process/struct.Flatten.html" title="struct reactive::process::Flatten">Flatten</a>&lt;Self&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;Self::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Flattens the execution of a process when its returned value is itself another process.</p>
+</div><h4 id='method.and_then' class="method"><span id='and_then.v' class='invisible'><code>fn <a href='../../reactive/process/trait.Process.html#method.and_then' class='fnname'>and_then</a>&lt;F, P&gt;(self, chain: F) -&gt; <a class="struct" href="../../reactive/process/struct.AndThen.html" title="struct reactive::process::AndThen">AndThen</a>&lt;Self, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(Self::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>) -&gt; P + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Chains another process after the exectution of one process (like the <code>bind</code> for a monad).</p>
+</div><h4 id='method.then' class="method"><span id='then.v' class='invisible'><code>fn <a href='../../reactive/process/trait.Process.html#method.then' class='fnname'>then</a>&lt;P&gt;(self, successor: P) -&gt; <a class="struct" href="../../reactive/process/struct.Then.html" title="struct reactive::process::Then">Then</a>&lt;Self, P&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Executes a second process after one process terminates. The returned value of the first process is ignored. <a href="../../reactive/process/trait.Process.html#method.then">Read more</a></p>
+</div><h4 id='method.if_else' class="method"><span id='if_else.v' class='invisible'><code>fn <a href='../../reactive/process/trait.Process.html#method.if_else' class='fnname'>if_else</a>&lt;P1, P2, V&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;self, <br>&nbsp;&nbsp;&nbsp;&nbsp;if_branch: P1, <br>&nbsp;&nbsp;&nbsp;&nbsp;else_branch: P2<br>) -&gt; <a class="struct" href="../../reactive/process/struct.IfElse.html" title="struct reactive::process::IfElse">IfElse</a>&lt;Self, P1, P2&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>&lt;Value = <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;P1: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>&lt;Value = V&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;P2: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>&lt;Value = V&gt;,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Decides whether to execute <code>if_branch</code> or <code>else_branch</code> according to the returned value of <code>self</code>, which must be of type <code>bool</code>.   The combinator <code>and_then</code> defined earlier together with the built-in <code>if</code>-<code>else</code> branching in Rust cannot allow us to achieve the same purpose since <code>if</code> branch and <code>else</code> branch in Rust must result in the same type. <a href="../../reactive/process/trait.Process.html#method.if_else">Read more</a></p>
+</div><h4 id='method.join' class="method"><span id='join.v' class='invisible'><code>fn <a href='../../reactive/process/trait.Process.html#method.join' class='fnname'>join</a>&lt;P&gt;(self, proc2: P) -&gt; <a class="struct" href="../../reactive/process/struct.Join.html" title="struct reactive::process::Join">Join</a>&lt;Self, P&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Executes two processes in parallel. </p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;P, F, V&gt; <a class="trait" href="../../reactive/process/trait.ProcessMut.html" title="trait reactive::process::ProcessMut">ProcessMut</a> for <a class="struct" href="../../reactive/process/struct.Map.html" title="struct reactive::process::Map">Map</a>&lt;P, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.ProcessMut.html" title="trait reactive::process::ProcessMut">ProcessMut</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(P::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>) -&gt; V + 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/reactive/process/map.rs.html#15-16' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.loop_proc' class="method"><span id='loop_proc.v' class='invisible'><code>fn <a href='../../reactive/process/trait.ProcessMut.html#method.loop_proc' class='fnname'>loop_proc</a>(self) -&gt; <a class="struct" href="../../reactive/process/struct.Loop.html" title="struct reactive::process::Loop">Loop</a>&lt;Self&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>An infinite loop. The returned value of the process is ignored if any.</p>
+</div><h4 id='method.repeat' class="method"><span id='repeat.v' class='invisible'><code>fn <a href='../../reactive/process/trait.ProcessMut.html#method.repeat' class='fnname'>repeat</a>(self, times: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; <a class="struct" href="../../reactive/process/struct.Repeat.html" title="struct reactive::process::Repeat">Repeat</a>&lt;Self&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>A simple loop that just repeats the process a given number of times and collects all the returned values in a vector. <a href="../../reactive/process/trait.ProcessMut.html#method.repeat">Read more</a></p>
+</div><h4 id='method.while_proc' class="method"><span id='while_proc.v' class='invisible'><code>fn <a href='../../reactive/process/trait.ProcessMut.html#method.while_proc' class='fnname'>while_proc</a>&lt;V&gt;(self) -&gt; <a class="struct" href="../../reactive/process/struct.While.html" title="struct reactive::process::While">While</a>&lt;Self&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="../../reactive/process/trait.ProcessMut.html" title="trait reactive::process::ProcessMut">ProcessMut</a>&lt;Value = <a class="enum" href="../../reactive/process/enum.LoopStatus.html" title="enum reactive::process::LoopStatus">LoopStatus</a>&lt;V&gt;&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>A classic loop that continues or stops accroding to the returned value of the process.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;P, F, V&gt; <a class="trait" href="../../reactive/process/trait.ProcessSt.html" title="trait reactive::process::ProcessSt">ProcessSt</a> for <a class="struct" href="../../reactive/process/struct.Map.html" title="struct reactive::process::Map">Map</a>&lt;P, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.ProcessSt.html" title="trait reactive::process::ProcessSt">ProcessSt</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(P::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>) -&gt; V + 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/reactive/process/map.rs.html#20-28' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.call' class="method"><span id='call.v' class='invisible'><code>fn <a href='../../reactive/process/trait.ProcessSt.html#tymethod.call' class='fnname'>call</a>&lt;C&gt;(self, runtime: &amp;mut <a class="struct" href="../../reactive/runtime/struct.SingleThreadRuntime.html" title="struct reactive::runtime::SingleThreadRuntime">SingleThreadRuntime</a>, next: C) <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;C: <a class="trait" href="../../reactive/continuation/trait.ContinuationSt.html" title="trait reactive::continuation::ContinuationSt">ContinuationSt</a>&lt;Self::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>&gt;,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Executes the reactive process in the runtime, calls <code>next</code> with the resulting value.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;P, F, V&gt; <a class="trait" href="../../reactive/process/trait.ProcessMutSt.html" title="trait reactive::process::ProcessMutSt">ProcessMutSt</a> for <a class="struct" href="../../reactive/process/struct.Map.html" title="struct reactive::process::Map">Map</a>&lt;P, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.ProcessMutSt.html" title="trait reactive::process::ProcessMutSt">ProcessMutSt</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(P::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>) -&gt; V + 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/reactive/process/map.rs.html#30-46' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.call_mut' class="method"><span id='call_mut.v' class='invisible'><code>fn <a href='../../reactive/process/trait.ProcessMutSt.html#tymethod.call_mut' class='fnname'>call_mut</a>&lt;C&gt;(self, runtime: &amp;mut <a class="struct" href="../../reactive/runtime/struct.SingleThreadRuntime.html" title="struct reactive::runtime::SingleThreadRuntime">SingleThreadRuntime</a>, next: C) <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;C: <a class="trait" href="../../reactive/continuation/trait.ContinuationSt.html" title="trait reactive::continuation::ContinuationSt">ContinuationSt</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a>Self, Self::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a>&gt;,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Executes the mutable process in the runtime, then calls <code>next</code> with the process and the process&#39;s return value. <a href="../../reactive/process/trait.ProcessMutSt.html#tymethod.call_mut">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;P, F, V&gt; <a class="trait" href="../../reactive/process/trait.ConstraintOnValue.html" title="trait reactive::process::ConstraintOnValue">ConstraintOnValue</a> for <a class="struct" href="../../reactive/process/struct.Map.html" title="struct reactive::process::Map">Map</a>&lt;P, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(P::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>) -&gt; V + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;V: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/reactive/process/map.rs.html#50-54' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.T' class="type"><span id='T.t' class='invisible'><code>type <a href='../../reactive/process/trait.ConstraintOnValue.html#associatedtype.T' class="type">T</a> = V</code></span></h4>
+</div><h3 class='impl'><span class='in-band'><code>impl&lt;P, F, V&gt; <a class="trait" href="../../reactive/process/trait.ProcessPl.html" title="trait reactive::process::ProcessPl">ProcessPl</a> for <a class="struct" href="../../reactive/process/struct.Map.html" title="struct reactive::process::Map">Map</a>&lt;P, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.ProcessPl.html" title="trait reactive::process::ProcessPl">ProcessPl</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(P::<a class="type" href="../../reactive/process/trait.ConstraintOnValue.html#associatedtype.T" title="type reactive::process::ConstraintOnValue::T">T</a>) -&gt; V + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;V: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/reactive/process/map.rs.html#59-67' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.call-1' class="method"><span id='call.v-1' class='invisible'><code>fn <a href='../../reactive/process/trait.ProcessPl.html#tymethod.call' class='fnname'>call</a>&lt;C&gt;(self, runtime: &amp;mut <a class="struct" href="../../reactive/runtime/struct.ParallelRuntime.html" title="struct reactive::runtime::ParallelRuntime">ParallelRuntime</a>, next: C) <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;C: <a class="trait" href="../../reactive/continuation/trait.ContinuationPl.html" title="trait reactive::continuation::ContinuationPl">ContinuationPl</a>&lt;Self::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a>&gt;,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Executes the reactive process in the runtime, calls <code>next</code> with the resulting value.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;P, F, V&gt; <a class="trait" href="../../reactive/process/trait.ProcessMutPl.html" title="trait reactive::process::ProcessMutPl">ProcessMutPl</a> for <a class="struct" href="../../reactive/process/struct.Map.html" title="struct reactive::process::Map">Map</a>&lt;P, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;P: <a class="trait" href="../../reactive/process/trait.ProcessMutPl.html" title="trait reactive::process::ProcessMutPl">ProcessMutPl</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(P::<a class="type" href="../../reactive/process/trait.ConstraintOnValue.html#associatedtype.T" title="type reactive::process::ConstraintOnValue::T">T</a>) -&gt; V + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;V: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/reactive/process/map.rs.html#69-85' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.call_mut-1' class="method"><span id='call_mut.v-1' class='invisible'><code>fn <a href='../../reactive/process/trait.ProcessMutPl.html#tymethod.call_mut' class='fnname'>call_mut</a>&lt;C&gt;(self, runtime: &amp;mut <a class="struct" href="../../reactive/runtime/struct.ParallelRuntime.html" title="struct reactive::runtime::ParallelRuntime">ParallelRuntime</a>, next: C) <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;C: <a class="trait" href="../../reactive/continuation/trait.ContinuationPl.html" title="trait reactive::continuation::ContinuationPl">ContinuationPl</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a>Self, Self::<a class="type" href="../../reactive/process/trait.Process.html#associatedtype.Value" title="type reactive::process::Process::Value">Value</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a>&gt;,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Executes the mutable process in the runtime, then calls <code>next</code> with the process and the process&#39;s return value. <a href="../../reactive/process/trait.ProcessMutPl.html#tymethod.call_mut">Read more</a></p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "reactive";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

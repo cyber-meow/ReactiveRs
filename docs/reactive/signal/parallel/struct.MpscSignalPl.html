@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `MpscSignalPl` struct in crate `reactive`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, MpscSignalPl">
+
+    <title>reactive::signal::parallel::MpscSignalPl - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc struct">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'>Struct MpscSignalPl</p><div class="block items"><ul><li><a href="#methods">Methods</a></li><li><a href="#implementations">Trait Implementations</a></li></ul></div><p class='location'><a href='../../index.html'>reactive</a>::<wbr><a href='../index.html'>signal</a>::<wbr><a href='index.html'>parallel</a></p><script>window.sidebarCurrent = {name: 'MpscSignalPl', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../../index.html'>reactive</a>::<wbr><a href='../index.html'>signal</a>::<wbr><a href='index.html'>parallel</a>::<wbr><a class="struct" href=''>MpscSignalPl</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../../src/reactive/signal/parallel/mpsc_signal.rs.html#160' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct MpscSignalPl&lt;B, D, F&gt;(_);</pre><div class='docblock'><p>Interface of mpsc signal. This is what is directly exposed to users.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl&lt;B, D, F&gt; <a class="struct" href="../../../reactive/signal/parallel/struct.MpscSignalPl.html" title="struct reactive::signal::parallel::MpscSignalPl">MpscSignalPl</a>&lt;B, D, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;B: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;D: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>() -&gt; B + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/reactive/signal/parallel/mpsc_signal.rs.html#189-198' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.new' class="method"><span id='new.v' class='invisible'><code>fn <a href='#method.new' class='fnname'>new</a>&lt;A&gt;(get_default: D, gather: F) -&gt; Self <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;A: 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(A, &amp;mut B),&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Creates a new mpmc signal.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class="struct" href="../../../reactive/signal/parallel/struct.MpscSignalPl.html" title="struct reactive::signal::parallel::MpscSignalPl">MpscSignalPl</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">()</a>, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">()</a>, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">()</a>&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/reactive/signal/parallel/mpsc_signal.rs.html#200-211' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.default' class="method"><span id='default.v' class='invisible'><code>fn <a href='#method.default' class='fnname'>default</a>&lt;A&gt;(<br>) -&gt; <a class="struct" href="../../../reactive/signal/parallel/struct.MpscSignalPl.html" title="struct reactive::signal::parallel::MpscSignalPl">MpscSignalPl</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;A&gt;, fn() -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;A&gt;, fn(_: A, _: &amp;mut <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;A&gt;)&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;A: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Creates a new mpsc signal with the default combination function, which simply
+collects all emitted values in a vector.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl&lt;B, D, F&gt; <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> for <a class="struct" href="../../../reactive/signal/parallel/struct.MpscSignalPl.html" title="struct reactive::signal::parallel::MpscSignalPl">MpscSignalPl</a>&lt;B, D, F&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/reactive/signal/parallel/mpsc_signal.rs.html#162-166' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.clone' class="method"><span id='clone.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; Self</code></span></h4>
+<div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
+</div><h4 id='method.clone_from' class="method"><span id='clone_from.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code><div class='since' title='Stable since Rust version 1.0.0'>1.0.0</div></span></h4>
+<div class='docblock'><p>Performs copy-assignment from <code>source</code>. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;B, D, F&gt; <a class="trait" href="../../../reactive/signal/trait.Signal.html" title="trait reactive::signal::Signal">Signal</a> for <a class="struct" href="../../../reactive/signal/parallel/struct.MpscSignalPl.html" title="struct reactive::signal::parallel::MpscSignalPl">MpscSignalPl</a>&lt;B, D, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;B: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;D: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>() -&gt; B + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/reactive/signal/parallel/mpsc_signal.rs.html#168-178' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.RuntimeRef' class="type"><span id='RuntimeRef.t' class='invisible'><code>type <a href='../../../reactive/signal/trait.Signal.html#associatedtype.RuntimeRef' class="type">RuntimeRef</a> = MpscSignalRuntimeRef&lt;B, D, F&gt;</code></span></h4>
+<div class='docblock'><p>The runtime reference type associated with the signal.</p>
+</div><h4 id='method.runtime' class="method"><span id='runtime.v' class='invisible'><code>fn <a href='../../../reactive/signal/trait.Signal.html#tymethod.runtime' class='fnname'>runtime</a>(&amp;self) -&gt; MpscSignalRuntimeRef&lt;B, D, F&gt;</code></span></h4>
+<div class='docblock'><p>Returns a reference to the signal&#39;s runtime.</p>
+</div><h4 id='method.await_immediate' class="method"><span id='await_immediate.v' class='invisible'><code>fn <a href='../../../reactive/signal/trait.Signal.html#method.await_immediate' class='fnname'>await_immediate</a>(&amp;self) -&gt; <a class="struct" href="../../../reactive/signal/struct.AwaitImmediate.html" title="struct reactive::signal::AwaitImmediate">AwaitImmediate</a>&lt;Self&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Returns a process that waits for the next emission of the signal, current instant included. <a href="../../../reactive/signal/trait.Signal.html#method.await_immediate">Read more</a></p>
+</div><h4 id='method.present_else' class="method"><span id='present_else.v' class='invisible'><code>fn <a href='../../../reactive/signal/trait.Signal.html#method.present_else' class='fnname'>present_else</a>&lt;P1, P2, V&gt;(&amp;self, p1: P1, p2: P2) -&gt; <a class="struct" href="../../../reactive/signal/struct.PresentElse.html" title="struct reactive::signal::PresentElse">PresentElse</a>&lt;Self, P1, P2&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;P1: <a class="trait" href="../../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>&lt;Value = V&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;P2: <a class="trait" href="../../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>&lt;Value = V&gt;,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Test the status of a signal <code>s</code>. If the signal is present, the process <code>p1</code> is executed instantaneously, other wise <code>p2</code> is executed at the following instant. <a href="../../../reactive/signal/trait.Signal.html#method.present_else">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;B, D, F&gt; <a class="trait" href="../../../reactive/signal/valued_signal/trait.ValuedSignal.html" title="trait reactive::signal::valued_signal::ValuedSignal">ValuedSignal</a> for <a class="struct" href="../../../reactive/signal/parallel/struct.MpscSignalPl.html" title="struct reactive::signal::parallel::MpscSignalPl">MpscSignalPl</a>&lt;B, D, F&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;B: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;D: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>() -&gt; B + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/reactive/signal/parallel/mpsc_signal.rs.html#180-187' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Stored' class="type"><span id='Stored.t' class='invisible'><code>type <a href='../../../reactive/signal/valued_signal/trait.ValuedSignal.html#associatedtype.Stored' class="type">Stored</a> = B</code></span></h4>
+<div class='docblock'><p>The value stored in the signal.</p>
+</div><h4 id='associatedtype.SigType' class="type"><span id='SigType.t' class='invisible'><code>type <a href='../../../reactive/signal/valued_signal/trait.ValuedSignal.html#associatedtype.SigType' class="type">SigType</a> = <a class="struct" href="../../../reactive/signal/valued_signal/struct.MpSignal.html" title="struct reactive::signal::valued_signal::MpSignal">MpSignal</a></code></span></h4>
+<div class='docblock'><p>A more specific type of a signal. This is necessary because some generic implementation may depend on the specific type of the signal. <a href="../../../reactive/signal/valued_signal/trait.ValuedSignal.html#associatedtype.SigType">Read more</a></p>
+</div><h4 id='method.emit' class="method"><span id='emit.v' class='invisible'><code>fn <a href='../../../reactive/signal/valued_signal/trait.ValuedSignal.html#method.emit' class='fnname'>emit</a>&lt;A&gt;(&amp;self, emitted: A) -&gt; <a class="struct" href="../../../reactive/signal/valued_signal/struct.EmitValue.html" title="struct reactive::signal::valued_signal::EmitValue">EmitValue</a>&lt;Self, A&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Returns a process that emits the signal with value <code>emitted</code> when it is called.</p>
+</div><h4 id='method.try_emit' class="method"><span id='try_emit.v' class='invisible'><code>fn <a href='../../../reactive/signal/valued_signal/trait.ValuedSignal.html#method.try_emit' class='fnname'>try_emit</a>&lt;A&gt;(&amp;self, emitted: A) -&gt; <a class="struct" href="../../../reactive/signal/valued_signal/struct.TryEmitValue.html" title="struct reactive::signal::valued_signal::TryEmitValue">TryEmitValue</a>&lt;Self, A&gt;</code></span></h4>
+<div class='docblock'><p>Emits a value to the signal only if the signal is not yet emitted. Returns a bool to indicate if the emission suceeds or not. This construction is inparticular useful for single-producer signals. <a href="../../../reactive/signal/valued_signal/trait.ValuedSignal.html#method.try_emit">Read more</a></p>
+</div><h4 id='method.await' class="method"><span id='await.v' class='invisible'><code>fn <a href='../../../reactive/signal/valued_signal/trait.ValuedSignal.html#method.await' class='fnname'>await</a>(&amp;self) -&gt; <a class="struct" href="../../../reactive/signal/valued_signal/struct.AwaitValue.html" title="struct reactive::signal::valued_signal::AwaitValue">AwaitValue</a>&lt;Self, Self::<a class="type" href="../../../reactive/signal/valued_signal/trait.ValuedSignal.html#associatedtype.SigType" title="type reactive::signal::valued_signal::ValuedSignal::SigType">SigType</a>&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h4>
+<div class='docblock'><p>Waits the signal to be emitted and gets its content.   For a single-producer signal the process terminates immediately and for a multi-producer signal it terminates at the following instant.  For example, when <code>s1</code> is a spmc signal and when <code>s2</code> is a mpmc signal, <code>s1.await().pause()</code> is semantically equivalent to <code>s2.await()</code>. <a href="../../../reactive/signal/valued_signal/trait.ValuedSignal.html#method.await">Read more</a></p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "reactive";
+    </script>
+    <script src="../../../main.js"></script>
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

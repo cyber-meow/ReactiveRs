@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `process` mod in crate `reactive`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, process">
+
+    <title>reactive::process - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc mod">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'>Module process</p><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'><a href='../index.html'>reactive</a></p><script>window.sidebarCurrent = {name: 'process', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content">
+<h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>reactive</a>::<wbr><a class="mod" href=''>process</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/reactive/process/mod.rs.html#1-151' title='goto source code'>[src]</a></span></h1>
+<div class='docblock'><p>A process encapsulates what should be runned by a reactive engine.</p>
+
+<p>Starting from the function <code>value_proc</code> or some signal, users are free
+to define their own process to be executed in the reactive environment
+using the methods that are offered by the traits <code>Process</code> and <code>ProcessMut</code>.
+There is no need to manipulate directly the runtime engines because we only
+need to call <code>execute_process</code>, <code>execute_process_parallel</code>, or
+<code>execute_process_parallel_with_main</code> at the end to execute the process.</p>
+
+<p>If a process is only defined with things found in this module (in other words,
+no signal is used), we can execute it in the two kinds of runtime as long as
+it&#39;s <code>Send</code> and <code>Sync</code>.</p>
+
+<p>Concerning the code structure, the code for the parallel and non-parallel part of
+the library are in fact very similar. However, I&#39;m not able to figure out a way
+to design traits so that all can be put together through some abstraction in order
+to reduce repeated code.</p>
+
+<p>The problem is that the method <code>call</code> has a generic type parameter <code>C</code> and in the
+two cases it must implement the trait <code>ContinuationSt</code> or <code>ContinuationPl</code>.
+I didn&#39;t find a way to integrate this information into a same trait, so I must
+have two separated trait implementations.
+For example, a trait that can able to parametrized by another trait could be very
+helpful, but that doesn&#39;t exist in Rust at this moment (and I admit that I don&#39;t
+even know if this is possible from a theretical viewpoint).</p>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.AndThen.html"
+                                  title='struct reactive::process::AndThen'>AndThen</a></td>
+                           <td class='docblock-short'>
+                                <p>Chains a computation onto the end of another process.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Flatten.html"
+                                  title='struct reactive::process::Flatten'>Flatten</a></td>
+                           <td class='docblock-short'>
+                                <p>Flattens the process when it returns another process to get only the
+result of the final process.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.IfElse.html"
+                                  title='struct reactive::process::IfElse'>IfElse</a></td>
+                           <td class='docblock-short'>
+                                <p>Selects the process to run according to what the previous process returns.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Join.html"
+                                  title='struct reactive::process::Join'>Join</a></td>
+                           <td class='docblock-short'>
+                                <p>Parallel composition of two processes.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.JoinAll.html"
+                                  title='struct reactive::process::JoinAll'>JoinAll</a></td>
+                           <td class='docblock-short'>
+                                <p>A process which takes a list of processes and terminates with a  vector of the
+completed values.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Loop.html"
+                                  title='struct reactive::process::Loop'>Loop</a></td>
+                           <td class='docblock-short'>
+                                <p>Repeats a process forever.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Map.html"
+                                  title='struct reactive::process::Map'>Map</a></td>
+                           <td class='docblock-short'>
+                                <p>A process that applies a function to the returned value of another process.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Pause.html"
+                                  title='struct reactive::process::Pause'>Pause</a></td>
+                           <td class='docblock-short'>
+                                <p>The process is suspended until next instant.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Repeat.html"
+                                  title='struct reactive::process::Repeat'>Repeat</a></td>
+                           <td class='docblock-short'>
+                                <p>Repeats a process several times and collects all the produced values
+in a vector which is returned at the end of the loop.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Then.html"
+                                  title='struct reactive::process::Then'>Then</a></td>
+                           <td class='docblock-short'>
+                                <p>Executes the second process while ignoring the returned value of the first process.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Value.html"
+                                  title='struct reactive::process::Value'>Value</a></td>
+                           <td class='docblock-short'>
+                                <p>A process that returns a value of type <code>V</code>.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.While.html"
+                                  title='struct reactive::process::While'>While</a></td>
+                           <td class='docblock-short'>
+                                <p>Repeats a process having <code>LoopStatus</code> as return type until it returns <code>Exit(v)</code>
+in which case the created process exits and returns <code>v</code>.</p>
+                           </td>
+                       </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.LoopStatus.html"
+                                  title='enum reactive::process::LoopStatus'>LoopStatus</a></td>
+                           <td class='docblock-short'>
+                                <p>Indicates if a loop is terminated or not.</p>
+                           </td>
+                       </tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ConstraintOnValue.html"
+                                  title='trait reactive::process::ConstraintOnValue'>ConstraintOnValue</a></td>
+                           <td class='docblock-short'>
+                                <p>This is a workaround to have constraints on associated types. Must be implemented
+by every type that want to represent some parallel process.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.Process.html"
+                                  title='trait reactive::process::Process'>Process</a></td>
+                           <td class='docblock-short'>
+                                <p>A abstract reactive process. A method <code>call</code> is in fact also necessary.
+Please see <code>ProcessSt</code> and <code>ProcessPl</code> for more information.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ProcessMut.html"
+                                  title='trait reactive::process::ProcessMut'>ProcessMut</a></td>
+                           <td class='docblock-short'>
+                                <p>A process that can be executed multiple times, modifying its environement each time.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ProcessMutPl.html"
+                                  title='trait reactive::process::ProcessMutPl'>ProcessMutPl</a></td>
+                           <td class='docblock-short'>
+                                <p>A repeatable reactive process that can be safely passed and shared between threads.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ProcessMutSt.html"
+                                  title='trait reactive::process::ProcessMutSt'>ProcessMutSt</a></td>
+                           <td class='docblock-short'>
+                                <p>A repeatable reactive process to be executed in a single thread.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ProcessPl.html"
+                                  title='trait reactive::process::ProcessPl'>ProcessPl</a></td>
+                           <td class='docblock-short'>
+                                <p>A reactive process that can be safely passed and shared between threads.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ProcessSt.html"
+                                  title='trait reactive::process::ProcessSt'>ProcessSt</a></td>
+                           <td class='docblock-short'>
+                                <p>A reactive process to be executed in a single thread.</p>
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.execute_process.html"
+                                  title='fn reactive::process::execute_process'>execute_process</a></td>
+                           <td class='docblock-short'>
+                                <p>Executes a process in a newly created runtime and return its value (without parallization).</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.execute_process_parallel.html"
+                                  title='fn reactive::process::execute_process_parallel'>execute_process_parallel</a></td>
+                           <td class='docblock-short'>
+                                <p>Executes a process in newly created runtimes and return its value (with parallization).</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.execute_process_parallel_with_main.html"
+                                  title='fn reactive::process::execute_process_parallel_with_main'>execute_process_parallel_with_main</a></td>
+                           <td class='docblock-short'>
+                                <p>Executes a process in newly created runtimes and return its value. Each runtime is
+runned in a separated child thread and these threads are runned in parallel with a
+main function that is executed in the main thread. This construction is necessary
+when some part of the program must be executed in the main thread.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.join_all.html"
+                                  title='fn reactive::process::join_all'>join_all</a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a process that executes a collection of processes in parallel and collects
+the results into a destination <code>Vec&lt;T&gt;</code> in the same order as they were provided.<br>
+However, since the Rust&#39;s type system force all the values in a vector to take
+the same type and most of the processes have different type from each other,
+this may not be very useful.
+(What&#39;s worse, a process cannot be made into a trait object.)</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.value_proc.html"
+                                  title='fn reactive::process::value_proc'>value_proc</a></td>
+                           <td class='docblock-short'>
+                                <p>Create a new process that returns the value <code>v</code> immediately.</p>
+                           </td>
+                       </tr></table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "reactive";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

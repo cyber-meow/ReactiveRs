@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Emit",""],["TryEmit",""]],"trait":[["PureSignal","Defines the behavior of a pure signal. This is the interface exposed to users."]]});
