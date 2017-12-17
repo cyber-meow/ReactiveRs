@@ -53,12 +53,12 @@ fn main() {
 
     let sugar_dist = gen_sugar_capcity(
         vec![(7, 10), (23, 46), (52, 33)], MAX_SUGAR, 
-        vec![3., 7., 17., 26., 38., 60.], WIDTH, HEIGHT);
+        vec![3., 7., 13., 20., 30., 50.], WIDTH, HEIGHT);
 
     let sim = Simulation {
         sugar_capacity: sugar_dist.clone(),
         sugar_grow_back_rate: 1,
-        sugar_grow_back_interval: 2,
+        sugar_grow_back_interval: 1,
     };
 
     let agent_init = AgentInit {

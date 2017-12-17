@@ -28,9 +28,57 @@ my library. Nevertheless, the use of chaining structures may be the reason of
 the slow compilation. For example, compiling the `sugarscape` binary on my core
 i7 laptop can take up to several minutes.
 
+## Documentation
+
+Of course you can simply clone the repository and run `cargo doc --open`.
+Otherwise it's also availabe on the
+[project page](https://cyber-meow.github.io/ReactiveRs/).
+
+## Some Examples
+
+To create a simple process and execute it:
+
+```Rust
+extern crate reactive;
+
+use reactive::{Process, ProcessMut, value_proc, execute_process};
+
+fn main () {
+    let mut counter = 0;
+    let say_hello = move |()| {
+        counter += 1;
+        println!("hello");
+        counter
+    };
+    let p = value_proc(()).map(say_hello).pause().repeat(5);
+    assert_eq!(execute_process(p), (1..6).collect::<Vec<_>>());
+}
+```
+
+The process will also print five lines of `"hello"` to the standard output.
+
+To define processes that communicate with each other using signals and run
+them in parallel (spawing two child threads):
+
+```Rust
+extern crate reactive;
+
+use reactive::{Process, value_proc, execute_process_parallel};
+use reactive::{PureSignal, Signal, PureSignalPl};
+
+fn main () {
+    let s = PureSignalPl::new();
+    let p1 = s.emit();
+    let p2 = s.present_else(value_proc(2), value_proc(3));
+    assert_eq!(execute_process_parallel(p1.join(p2), 2), ((), 2));
+}
+```
+
+For more examples please look into the `tests` directory.
+
 ## Sugarscape
 
-As an more complete example one can take a look at the file
+As a more complete example one can take a look at the file
 `example/sugarscape.rs` where I use the library (parallel version) to implement
 Sugarscape model. For the moment being I only include the basic moving rule and
 the reproduction rule but I may add other features later. To run the model,
