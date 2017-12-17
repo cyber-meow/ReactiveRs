@@ -114,9 +114,8 @@ fn main() {
         };
         let female_part = |(ag, _): (Agent, _)| {
             let name = ag.name.clone();
-            let skip_case = move |()| { println!("skip {}", name); Vec::new() };
             ag.reproduce
-            .present_else(value_proc(()).map(skip_case).pause(), value_proc(vec![ag.clone()]))
+            .present_else(value_proc(Vec::new()).pause(), value_proc(vec![ag.clone()]))
         };
         let check_gender = move |(ag, occupied): (Agent, Arc<Vec<Vec<Option<Agent>>>>)| {
             value_proc(ag.gender == Gender::Male)

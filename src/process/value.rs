@@ -3,12 +3,12 @@ use continuation::{ContinuationSt, ContinuationPl};
 use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
-/// Create a new process that returns the value v immediately.
+/// Create a new process that returns the value `v` immediately.
 pub fn value_proc<V>(v: V) -> Value<V> where V: 'static {
     Value(v)
 }
 
-/// A process that returns a value of type V.
+/// A process that returns a value of type `V`.
 pub struct Value<V>(V);
 
 impl<V> Process for Value<V> where V: 'static {

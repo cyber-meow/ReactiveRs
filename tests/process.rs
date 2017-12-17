@@ -104,5 +104,5 @@ fn while_repeat_join () {
              .pause()
              .while_proc();
     let p2 = value_proc(()).map(say_hello).pause().repeat(5);
-    assert_eq!(execute_process_parallel(p1.join(p2), 2), (10, 5));
+    assert_eq!(execute_process_parallel(p1.join(p2), 2), (10, (1..6).collect()));
 }

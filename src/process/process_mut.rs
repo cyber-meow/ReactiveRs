@@ -14,7 +14,7 @@ pub trait ProcessMut: Process {
     }
 
     /// A simple loop that just repeats the process a given number of times and
-    /// returns its value at the end of the loop.
+    /// collects all the returned values in a vector.
     fn repeat(self, times: usize) -> Repeat<Self> where Self: Sized {
         if times == 0 {
             panic!("The process must be executed at least once.");

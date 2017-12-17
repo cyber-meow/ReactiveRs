@@ -4,7 +4,7 @@ use runtime::Runtime;
 use continuation::ContinuationSt;
 use signal::signal_runtime::SignalRuntimeRefBaseSt;
 
-/// Runtime for executing reactive continuations.
+/// Runtime for executing reactive continuations in the main thread.
 pub struct SingleThreadRuntime {
     current_instant_works: Rc<Vec<Box<ContinuationSt<()>>>>,
     next_instant_works: Rc<Vec<Box<ContinuationSt<()>>>>,
@@ -35,7 +35,7 @@ impl Runtime for SingleThreadRuntime {
 }
 
 impl SingleThreadRuntime {
-    /// Creates a new `Runtime`.
+    /// Creates a new `SingleThreadRuntime`.
     pub fn new() -> Self { 
         SingleThreadRuntime {
             current_instant_works: Rc::new(Vec::new()),
@@ -49,6 +49,9 @@ impl SingleThreadRuntime {
         }
     }
     
+    /// Checks the presents of signals, resets all the emitted signals and replaces
+    /// `self.current_instant_works` by `self.next_instant_works` at the end of
+    /// each instant.
     fn end_of_instant(&mut self) {
         while let Some(s) = self.test_presence_signals.pop() {
             s.execute_present_works_box(self);
@@ -76,13 +79,13 @@ impl SingleThreadRuntime {
         self.end_of_instant_works.push(c);
     }
 
-    /// Increases the await counter by 1 when some process await a signal to continue.
+    /// Increases the await counter by 1 when some process awaits a signal.
     pub(crate) fn incr_await_counter(&mut self) {
         self.await_counter += 1;
     }
 
     /// Decrease the await counter by 1 when some signal is emitted and
-    /// the corresponding process is thus executed.
+    /// one corresponding process is thus executed.
     pub(crate) fn decr_await_counter(&mut self) {
         self.await_counter -= 1;
     }

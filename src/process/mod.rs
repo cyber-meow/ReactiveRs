@@ -1,5 +1,28 @@
-//! Once a process is defined, it can be executed in the two kinds of runtime
-//! as long as it's `Send` and `Sync`.
+//! A process encapsulates what should be runned by a reactive engine.
+//!
+//! Starting from the function `value_proc` or some signal, users are free
+//! to define their own process to be executed in the reactive environment
+//! using the methods that are offered by the traits `Process` and `ProcessMut`.
+//! There is no need to manipulate directly the runtime engines because we only
+//! need to call `execute_process`, `execute_process_parallel`, or
+//! `execute_process_parallel_with_main` at the end to execute the process.
+//!
+//! If a process is only defined with things found in this module (in other words,
+//! no signal is used), we can execute it in the two kinds of runtime as long as
+//! it's `Send` and `Sync`.
+//!
+//! Concerning the code structure, the code for the parallel and non-parallel part of
+//! the library are in fact very similar. However, I'm not able to figure out a way
+//! to design traits so that all can be put together through some abstraction in order
+//! to reduce repeated code.
+//!
+//! The problem is that the method `call` has a generic type parameter `C` and in the
+//! two cases it must implement the trait `ContinuationSt` or `ContinuationPl`.
+//! I didn't find a way to integrate this information into a same trait, so I must
+//! have two separated trait implementations.
+//! For example, a trait that can able to parametrized by another trait could be very
+//! helpful, but that doesn't exist in Rust at this moment (and I admit that I don't
+//! even know if this is possible from a theretical viewpoint).
 
 mod execute_process;
 mod process_mut;
@@ -95,15 +118,6 @@ pub trait Process: 'static {
     }
 }
 
-// The codes for the two versions of the library are almost the same.
-// However, I'm not able to figure out a way to design a common trait so that
-// the method definitions and trait implementations can be put together.
-//
-// The problem is that the method `call` has a generic type parameter `C` and in the
-// two cases it must implement the trait `ContinuationSt` or `ContinuationPl`.
-// I didn't find a way to integrate this information into a same trait.
-// For example, a trait cannot be parametrized by another trait, which can be helpful here.
-//
 /// A reactive process to be executed in a single thread.
 pub trait ProcessSt: Process {
     /// Executes the reactive process in the runtime, calls `next` with the resulting value.
@@ -120,7 +134,8 @@ pub trait ProcessPl:
         where C: ContinuationPl<Self::Value>;
 }
 
-/// This is a workaround to have constraints on associated types.
+/// This is a workaround to have constraints on associated types. Must be implemented
+/// by every type that want to represent some parallel process.
 //
 // For the implementation, we would like have something like this but it can
 // cause cyclic evaluation.

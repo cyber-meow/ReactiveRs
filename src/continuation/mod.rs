@@ -1,3 +1,10 @@
+//! A continuation represents some work to be done in the future.
+//!
+//! Continuations are also what are stored in the runtime(s) and to execute a
+//! continuation we need to call it with some value. This construction is quite
+//! similar to the one used by ReactiveML according to 
+//! [this article](http://rml.lri.fr/publications/MandelPasteurPouzet-PPDP-2015.pdf).
+
 mod map;
 pub use self::map::Map;
 mod pause;

@@ -9,6 +9,17 @@ use runtime::Runtime;
 use continuation::ContinuationPl;
 use signal::signal_runtime::SignalRuntimeRefBasePl;
 
+/// Runtime for executing reactive continuations in a separated thread.
+///
+/// Every runtime has its owned FIFO containing continuations to be carried
+/// out and to ensure thread work balance a work stealing strategy is
+/// adopted. To avoid stealing from a thread that is not working all the
+/// runtimes share a common working pool which indicates the working
+/// runtimes. There are two synchronization using barrier at the end of
+/// each instant, one for the main works and one for the works to be executed
+/// only at the end of instant (there are notably the `await` constructions
+/// of multi-producer signals). A conditional variable is then used to know
+/// if the whole engine should terminate or not.
 pub struct ParallelRuntime {
     pub(crate) id: usize,
     pub(crate) num_threads_total: usize,
@@ -28,6 +39,8 @@ pub struct ParallelRuntime {
     pub(crate) instant: usize,
 }
 
+/// Used at the end of each instant to determine if there is still work to
+/// do somewhere (or special case: there is process awaiting for signal emission).
 pub(crate) enum RuntimeStatus {
     Undetermined(usize),
     WorkRemained,
@@ -63,13 +76,13 @@ impl ParallelRuntime {
         self.end_of_instant_works.push(c);
     }
     
-    /// Increases the await counter by 1 when some process await a signal to continue.
+    /// Increases the await counter by 1 when some process awaits a signal.
     pub(crate) fn incr_await_counter(&mut self) {
         self.await_counter.fetch_add(1, Ordering::SeqCst);
     }
 
     /// Decrease the await counter by 1 when some signal is emitted and
-    /// the corresponding process is thus executed.
+    /// a corresponding process is thus executed.
     pub(crate) fn decr_await_counter(&mut self) {
         self.await_counter.fetch_sub(1, Ordering::SeqCst);
     }
