@@ -1,7 +1,7 @@
 # ReactiveRs
 A rust library for reactive programming inspired from [ReactiveML](http://rml.lri.fr/).
 Class project of the ENS M1 course
-"[parallel and reactive programming](http://www.di.ens.fr/~pouzet/cours/parallele_et_reactif/)"
+"[parallel and reactive programming](http://www.di.ens.fr/~beaugnon/cours/parallele_et_reactif/)"
 given by Albert Cohen and Marc Pouzet.
 
 For the moment being, the library include implementation of underlying
@@ -31,8 +31,8 @@ i7 laptop can take up to several minutes.
 ## Documentation
 
 Of course you can simply clone the repository and run `cargo doc --open`.
-Otherwise it's also availabe on the
-[project page](https://cyber-meow.github.io/ReactiveRs/).
+
+Otherwise it's also availabe [here](https://cyber-meow.github.io/ReactiveRs/).
 
 ## Some Examples
 
@@ -55,7 +55,7 @@ fn main () {
 }
 ```
 
-The process will also print five lines of `"hello"` to the standard output.
+The process will also print five lines of `hello` to the standard output.
 
 To define processes that communicate with each other using signals and run
 them in parallel (spawing two child threads):
@@ -78,7 +78,7 @@ For more examples please look into the `tests` directory.
 
 ## Sugarscape
 
-As a more complete example one can take a look at the file
+As a more complicated example one can take a look at the file
 `example/sugarscape.rs` where I use the library (parallel version) to implement
 Sugarscape model. For the moment being I only include the basic moving rule and
 the reproduction rule but I may add other features later. To run the model,
