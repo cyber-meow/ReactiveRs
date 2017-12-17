@@ -17,14 +17,14 @@ use reactive::process::{Process, ProcessMut};
 use reactive::process::{value_proc, join_all};
 use reactive::process::execute_process_parallel_with_main;
 use reactive::process::LoopStatus::{Continue, Exit};
-use reactive::signal::ValuedSignal;
-use reactive::signal::parallel::{SpmcSignalPl, MpmcSignalPl};
+use reactive::signal::{Signal, PureSignal, ValuedSignal};
+use reactive::signal::parallel::{PureSignalPl, SpmcSignalPl, MpmcSignalPl};
 
 const WIDTH: usize = 80;
 const HEIGHT: usize = 60;
-const NUM_AGENTS: usize = 80;
+const NUM_AGENTS: usize = 120;
 const MAX_SUGAR: usize = 6;
-const FETILITY_AGE: (usize, usize) = (15, 60);
+const FERTILITY_AGE: (usize, usize) = (15, 80);
 
 fn main() {
 
@@ -41,7 +41,7 @@ fn main() {
     let agent_init = AgentInit {
         init_sugar_range: (40, 61),
         sugar_metabolism_range: (3, 7),
-        max_age_range: (21, 101),
+        max_age_range: (41, 121),
         vision_range: (2, 6),
     };
 
@@ -59,7 +59,7 @@ fn main() {
 
     let gs = GlobalState {
         sugar_dist: sugar_dist,
-        occupied: na::DMatrix::from_element(WIDTH, HEIGHT, None),
+        occupied: (0..WIDTH).map(|_| (0..HEIGHT).map(|_| None).collect()).collect(),
         agents: Vec::new(),
         tick: 0,
     };
@@ -83,42 +83,98 @@ fn main() {
         let pos = (agent_pos.0 as usize, agent_pos.1 as usize);
         let mut gs_lock = gs.lock().unwrap();
         let ag = agent_init.gen_agent(pos, &gs_lock.sugar_dist);
-        gs_lock.agents.push((ag, SpmcSignalPl::new()));
+        gs_lock.agents.push(ag);
     }
-        
-    let agent_alive =
-        move |(ag, confirm): AgentComplete, sugar_dist: Arc<na::DMatrix<usize>>|
-    {
-        let agents_signal = agents_signal_cl.clone();
-        let confirm_cl = confirm.clone();
-        let seek_next_pos = move |occupied: Arc<na::DMatrix<Option<Agent>>>| {
-            let confirm_cl = confirm_cl.clone();
-            let (old_pos, new_ag) = ag.move_to(&sugar_dist, &occupied);
-            agents_signal
-            .emit((old_pos, Some((new_ag.clone(), confirm_cl))))
-            .then(value_proc(ag))
+
+    let agent_alive = move |ag: Agent, sugar_dist: Arc<na::DMatrix<usize>>| {
+        let male_part = |(ag, occupied): (Agent, Arc<Vec<Vec<Option<Agent>>>>)| {
+            let mut candidates = ag.find_reproduce(&occupied);
+            let try_with_one = move |()| {
+                let continue_case = |(ag, ag2): (Agent, Option<Agent>)| {
+                    let ag2 = ag2.expect("Trying to find a candidate, but fails ...");
+                    let ag2_cl = ag2.clone();
+                    let reproduce = move |()| {
+                        Exit(ag.reproduce(ag2_cl))
+                    };
+                    ag2.reproduce
+                    .try_emit()
+                    .if_else(value_proc(()).map(reproduce), value_proc(Continue))
+                };
+                let ag = ag.clone();
+                let ag2 = candidates.pop();
+                value_proc(ag2.is_none())
+                .if_else(
+                    value_proc(Exit(vec![ag.clone()])),
+                    // This kind of abstraction is often necessary to avoid direct evaluation.
+                    value_proc((ag, ag2)).and_then(continue_case))
+            };
+            value_proc(())
+            .and_then(try_with_one)
+            .while_proc()
+        };
+        let female_part = |(ag, _): (Agent, _)| {
+            let name = ag.name.clone();
+            let skip_case = move |()| { println!("skip {}", name); Vec::new() };
+            ag.reproduce
+            .present_else(value_proc(()).map(skip_case).pause(), value_proc(vec![ag.clone()]))
+        };
+        let check_gender = move |(ag, occupied): (Agent, Arc<Vec<Vec<Option<Agent>>>>)| {
+            value_proc(ag.gender == Gender::Male)
+            .if_else(value_proc((ag.clone(), occupied.clone())).and_then(male_part).pause(),
+                     value_proc((ag, occupied)).and_then(female_part))
+        };
+        let check_reproduce = move |occupied: Arc<Vec<Vec<Option<Agent>>>>| {
+            value_proc(ag.is_fertile())
+            .if_else(value_proc((ag.clone(), occupied)).and_then(check_gender),
+                     value_proc(vec![ag]).pause())
+        };
+        let occupied_rev_cl = occupied_rev.clone();
+        let agents_signal_cl = agents_signal_cl.clone();
+        let agent_move = move |ag: Agent| {
+            let confirm = ag.confirm.clone();
+            let sugar_dist = sugar_dist.clone();
+            let agents_signal_cl = agents_signal_cl.clone();
+            let seek_next_pos = move |occupied: Arc<Vec<Vec<Option<Agent>>>>| {
+                let (old_pos, ag) = ag.move_to(&sugar_dist, &occupied);
+                agents_signal_cl
+                .emit((old_pos, Some(ag.clone())))
+                .then(value_proc(ag))
+            };
+            occupied_rev_cl
+            .await()
+            .and_then(seek_next_pos)
+            // Must wait next instant to get a confirmation.
+            .pause()
+            .then(confirm.await())
+            .if_else(value_proc(Exit(true)), value_proc(Continue))
+            .while_proc()
+        };
+        let into_process = move |agents: Vec<Agent>| {
+            join_all(agents.into_iter().map(agent_move))
+        };
+        let agents_left = |agents: Vec<bool>| {
+            if agents.iter().all(|x| !x) {
+                false
+            } else {
+                true
+            }
         };
         occupied_rev
         .await()
-        .and_then(seek_next_pos)
-        // Must wait next instant to get a confirmation.
-        .pause()
-        .then(confirm.await())
-        .if_else(value_proc(Exit(true)), value_proc(Continue))
-        .while_proc()
+        .and_then(check_reproduce)
+        .and_then(into_process)
+        .map(agents_left)
     };
 
-    let agent_update_proc = 
-        move |(ag, confirm): AgentComplete, sugar_dist: Arc<na::DMatrix<usize>>|
-    {
+    let agent_update_proc = move |ag: Agent, sugar_dist: Arc<na::DMatrix<usize>>| {
         let (alive, ag) = ag.metabolise();
-        value_proc(alive).if_else(agent_alive((ag, confirm), sugar_dist), value_proc(false))
+        // `agent_alive` is always evaluated but with the abstraction the code
+        // of `agent_alive` would need to be put here.
+        value_proc(alive).if_else(agent_alive(ag, sugar_dist), value_proc(false))
     };
         
-    let definitely_move = 
-        move |sugar_dist: Arc<na::DMatrix<usize>>, agents: Arc<Vec<AgentComplete>>|
-    {
-        let agent_procs = 
+    let definitely_move = move |sugar_dist: Arc<na::DMatrix<usize>>, agents: Arc<Vec<Agent>>| {
+        let agent_procs =
             agents.iter().map(|ag| agent_update_proc(ag.clone(), sugar_dist.clone()));
         let agents_left = |agents: Vec<bool>| {
             if agents.iter().all(|x| !x) {
@@ -131,9 +187,13 @@ fn main() {
     };
 
     let tick_rev_cl = tick_rev.clone();
-    let await_tick = move |(sd, agents): (Arc<na::DMatrix<usize>>, Arc<Vec<AgentComplete>>)| {
+    let await_tick = move |(sd, agents): (Arc<na::DMatrix<usize>>, Arc<Vec<Agent>>)| {
         tick_rev_cl
         .await()
+        // Notice that in this case `definitely_move` is always evaluated, but since
+        // it shall be the case as long as the window is still opened, I choose to do
+        // like this to avoid the need to put everything in `await_tick` (just like
+        // `agent_alive`).
         .if_else(definitely_move(sd, agents), value_proc(Exit(())))
     };
  
@@ -148,9 +208,9 @@ fn main() {
     let emit_on_agents_signal = 
         agents_signal
         .emit(((0, 0), None))
-        .pause()
         .then(tick_rev_cl.await())
-        .if_else(value_proc(Continue), value_proc(Exit(())))
+        .pause()
+        .if_else(value_proc(Continue).pause(), value_proc(Exit(())))
         .while_proc();
 
     let gs_cl = gs.clone();
@@ -177,10 +237,10 @@ fn main() {
     };
 
     let gs_cl = gs.clone();
-    let occupied = occupied.clone();
+    let occupied_cl = occupied.clone();
     let broadcast_occupied = move |()| {
         let occup = gs_cl.lock().unwrap().occupied.clone();
-        occupied.emit(Arc::new(occup))
+        occupied_cl.emit(Arc::new(occup))
     };
 
     let update_aps =
@@ -189,6 +249,18 @@ fn main() {
         .then(agents_signal_rev.await())
         .and_then(collision_detect)
         .while_proc();
+
+    let gs_cl = gs.clone();
+    let broadcast_occupied = move |()| {
+        let occup = gs_cl.lock().unwrap().occupied.clone();
+        occupied.emit(Arc::new(occup))
+    };
+
+    let update_aps =
+        value_proc(())
+        .and_then(broadcast_occupied)
+        .pause()
+        .then(update_aps);
 
     let update_patches = 
         value_proc(())
@@ -235,7 +307,7 @@ fn main() {
         .exit_on_esc(true)
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
-    window.set_max_fps(8);
+    window.set_max_fps(4);
 
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let ref font = assets.join("FiraSans-Regular.ttf");
@@ -292,35 +364,42 @@ enum WindowUpdated {
     End,
 }
 
+/* Global information */
+
 type Pos = (usize, usize);
-type AgentComplete = (Agent, SpmcSignalPl<bool>);
 
 struct GlobalState {
     sugar_dist: na::DMatrix<usize>,
-    occupied: na::DMatrix<Option<Agent>>,
-    agents: Vec<AgentComplete>,
+    occupied: Vec<Vec<Option<Agent>>>,
+    agents: Vec<Agent>,
     tick: usize,
 }
 
 impl GlobalState {
     fn update_agents(
-        &mut self, agents_update: Vec<(Pos, Option<AgentComplete>)>
+        &mut self, agents_update: Vec<(Pos, Option<Agent>)>
         ) -> (Vec<SpmcSignalPl<bool>>, Vec<SpmcSignalPl<bool>>)
     {
         let mut confirmed = Vec::new();
         let mut rejected = Vec::new();
+        // let mut names = Vec::new();
         for (old_pos, agent_opt) in agents_update.into_iter() {
-            if let Some((agent, confirm)) = agent_opt {
-                if self.occupied[agent.pos].is_none() || agent.pos == old_pos {
-                    self.occupied[agent.pos] = Some(agent.clone());
-                    self.occupied[old_pos] = None;
-                    self.agents.push((agent, confirm.clone()));
+            if let Some(agent) = agent_opt {
+                // names.push(agent.name.clone());
+                let (x, y) = agent.pos;
+                if self.occupied[x][y].is_none() || agent.pos == old_pos {
+                    // Important!! The value must be up to date counting already metabolism.
+                    self.occupied[x][y] = Some(agent.metabolise().1);
+                    self.occupied[old_pos.0][old_pos.1] = None;
+                    let confirm = agent.confirm.clone();
+                    self.agents.push(agent);
                     confirmed.push(confirm);
                 } else {
-                    rejected.push(confirm);
+                    rejected.push(agent.confirm);
                 }
             }
         }
+        // println!("{:?}", names);
         (confirmed, rejected)
     }
 
@@ -338,7 +417,7 @@ struct Simulation {
 
 impl Simulation {
     fn update_global_state(&self, gs: &mut GlobalState) {
-        for &(agent, _) in gs.agents.iter() {
+        for ref agent in gs.agents.iter() {
             gs.sugar_dist[agent.pos] = 0;
         }
         gs.tick = (gs.tick+1) % self.sugar_grow_back_interval;
@@ -377,7 +456,9 @@ fn gen_sugar_capcity(
     na::DMatrix::from_fn(width, height, decide_sugar_amount)
 }
 
-#[derive(Copy, Clone)]
+/* Defines the agents. */
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum Growth {
     Child,
     Fertile,
@@ -402,8 +483,9 @@ impl Gender {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone)]
 struct Agent {
+    name: String,
     pos: Pos,
     init_sugar: usize,
     sugar: usize,
@@ -412,6 +494,8 @@ struct Agent {
     age: usize,
     max_age: usize,
     gender: Gender,
+    confirm: SpmcSignalPl<bool>,
+    reproduce: PureSignalPl,
 }
 
 fn l1_distance(pos1: (usize, usize), pos2: (usize, usize)) -> usize {
@@ -420,49 +504,60 @@ fn l1_distance(pos1: (usize, usize), pos2: (usize, usize)) -> usize {
     x_dist + y_dist
 }
 
-/* Defines the agents. */
-
 impl Agent {
-    fn can_see(&self, max_width: usize, max_height: usize) -> Vec<(usize, usize)> {
+    fn can_see(
+        &self,
+        max_width: usize,
+        max_height: usize,
+        vision: usize) -> Vec<(usize, usize)>
+    {
         let (x, y) = self.pos;
-        let y_min = y.saturating_sub(self.vision);
-        let y_max = cmp::min(y + self.vision, max_height);
-        let x_min = x.saturating_sub(self.vision);
-        let x_max = cmp::min(x + self.vision, max_width);
+        let y_min = y.saturating_sub(vision);
+        let y_max = cmp::min(y + vision, max_height);
+        let x_min = x.saturating_sub(vision);
+        let x_max = cmp::min(x + vision, max_width);
         let move_along_x = (x_min..x).chain(x+1..x_max+1).map(|x| (x, y));
         let move_along_y = (y_min..y).chain(y+1..y_max+1).map(|y| (x, y));
         move_along_x.chain(move_along_y).collect()
     }
 
     /// Returns a boolean to indiacate if the agent is still alive.
-    fn metabolise(self) -> (bool, Agent) {
+    fn metabolise(&self) -> (bool, Agent) {
         let new_sugar = self.sugar.saturating_sub(self.sugar_metabolism);
         let new_age = self.age + 1;
         let alive = new_sugar > 0 && new_age <= self.max_age;
-        let new_agent = Agent { sugar: new_sugar, age: new_age, ..self };
+        let new_agent = Agent { sugar: new_sugar, age: new_age, ..self.clone() };
         (alive, new_agent)
     }
 
     fn status(&self) -> AgentStatus {
-        if self.age < FETILITY_AGE.0 {
+        if self.age < FERTILITY_AGE.0 {
             (self.gender, Growth::Child)
-        } else if self.age >= FETILITY_AGE.1 {
+        } else if self.age >= FERTILITY_AGE.1 {
             (self.gender, Growth::Aged)
         } else {
             (self.gender, Growth::Fertile)
         }
     }
 
-    fn move_to(self,
-               sugar_dist: &na::DMatrix<usize>,
-               occupied: &na::DMatrix<Option<Agent>>) -> (Pos, Agent)
+    fn is_fertile(&self) -> bool {
+        FERTILITY_AGE.0 <= self.age
+        && self.age < FERTILITY_AGE.1
+        && self.init_sugar <= self.sugar
+    }
+
+    fn move_to(
+        &self,
+        sugar_dist: &na::DMatrix<usize>,
+        occupied: &Vec<Vec<Option<Agent>>>) -> (Pos, Agent)
     {
         let self_pos = self.pos.clone();
         let mut current_most = sugar_dist[self_pos];
         let mut min_d = 0;
         let mut possible_next_pos = vec![self_pos];
-        for &pos in self.can_see(sugar_dist.nrows()-1, sugar_dist.ncols()-1).iter() {
-            if occupied[pos].is_none() {
+        for &pos in self.can_see(
+                sugar_dist.nrows()-1, sugar_dist.ncols()-1, self.vision).iter() {
+            if occupied[pos.0][pos.1].is_none() {
                 let d = l1_distance(pos, self.pos);
                 if sugar_dist[pos] > current_most {
                     current_most = sugar_dist[pos];
@@ -480,8 +575,43 @@ impl Agent {
         }
         let new_pos = weak_rng().choose(&possible_next_pos).unwrap().clone();
         let new_sugar = self.sugar + sugar_dist[new_pos];
-        let new_agent = Agent { pos: new_pos, sugar: new_sugar, .. self };
+        let new_agent = Agent { pos: new_pos, sugar: new_sugar, .. self.clone() };
         (self.pos, new_agent)
+    }
+
+    fn find_reproduce(
+        &self,
+        occupied: &Vec<Vec<Option<Agent>>>) -> Vec<Agent>
+    {
+        let mut candidates = Vec::new();
+        for &neighbor in self.can_see(occupied.len()-1, occupied[0].len()-1, 1).iter() {
+            if let Some(ref agent) = occupied[neighbor.0][neighbor.1] {
+                if agent.is_fertile() && agent.gender != self.gender {
+                    candidates.push(agent.clone());
+                }
+            }
+        }
+        candidates
+    }
+
+    fn reproduce(&self, other: Agent) -> Vec<Agent> {
+        let child = Agent {
+            pos: if weak_rng().gen_weighted_bool(2) { self.pos } else { other.pos },
+            init_sugar: (self.sugar + other.sugar)/2,
+            sugar: (self.sugar + other.sugar)/2,
+            sugar_metabolism: (self.sugar_metabolism + other.sugar_metabolism)/2,
+            vision: (self.vision + other.vision)/2,
+            age: 0,
+            max_age: (self.max_age + other.max_age)/2,
+            gender: Gender::rand_gender(),
+            confirm: SpmcSignalPl::new(),
+            reproduce: PureSignal::new(),
+            name: weak_rng().gen_ascii_chars().take(10).collect(),
+        };
+        // println!("have child, ag2 name: {}", other.name);
+        let self_ag = Agent { sugar: self.sugar/2, .. self.clone() };
+        let other_ag = Agent { sugar: other.sugar/2, .. other.clone() };
+        vec![self_ag, other_ag, child]
     }
 }
 
@@ -517,6 +647,9 @@ impl AgentInit {
             age: 0,
             max_age: gen_normal(self.max_age_range),
             gender: Gender::rand_gender(),
+            confirm: SpmcSignalPl::new(),
+            reproduce: PureSignalPl::new(),
+            name: weak_rng().gen_ascii_chars().take(10).collect(),
         }
     }
 }
@@ -557,7 +690,7 @@ where
         let coord = grid.cell_position(cell);
         rectangle(color, [coord[0], coord[1], grid.units, grid.units], c.transform, g);
     }
-    for &(agent, _) in gs.agents.iter() {
+    for ref agent in gs.agents.iter() {
         let coord = grid.cell_position((agent.pos.0 as u32, agent.pos.1 as u32));
         let color = match agent.status().0 {
             Gender::Male => config.agent_male_color,
@@ -586,6 +719,6 @@ where
     let transform = transform.trans(0.0, 40.0);
     text(color::WHITE, 28, "Agent Sugar", &mut config.cache, transform, g).unwrap();
     let transform = transform.trans(0.0, 35.0);
-    let total_sugar_agents = format!("{}", gs.agents.iter().fold(0, |sum, &(a, _)| sum+a.sugar));
+    let total_sugar_agents = format!("{}", gs.agents.iter().fold(0, |sum, a| sum+a.sugar));
     text(color::WHITE, 28, &total_sugar_agents, &mut config.cache, transform, g).unwrap();
 }

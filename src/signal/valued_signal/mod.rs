@@ -1,7 +1,9 @@
 mod emit;
 mod await;
+mod try_emit;
 pub use self::emit::{EmitValue, CanEmit};
 pub use self::await::{AwaitValue, GetValue};
+pub use self::try_emit::TryEmitValue;
 
 use std::marker::PhantomData;
 
@@ -19,6 +21,13 @@ pub trait ValuedSignal: Signal {
     /// Returns a process that emits the signal with value `emitted` when it is called.
     fn emit<A>(&self, emitted: A) -> EmitValue<Self, A> where Self: Sized {
         EmitValue { signal: self.clone(), emitted }
+    }
+
+    /// Emits a value to the signal only if the signal is not yet emitted.
+    /// Returns a bool to indicate if the emission suceeds or not.
+    /// This construction is inparticular useful for single-producer signals.
+    fn try_emit<A>(&self, emitted: A) -> TryEmitValue<Self, A> {
+        TryEmitValue { signal: self.clone(), emitted }
     }
 
     /// Waits the signal to be emitted and gets its content.  

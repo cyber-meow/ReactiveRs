@@ -6,7 +6,7 @@ use continuation::ContinuationSt;
 use process::{ProcessSt, ProcessMutSt};
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefSt};
-use signal::pure_signal::{PureSignal, Emit};
+use signal::pure_signal::{PureSignal, Emit, TryEmit};
 
 /// A shared pointer to a signal runtime.
 #[derive(Clone)]
@@ -93,6 +93,16 @@ impl PureSignalRuntimeRef {
         self.execute_present_works(runtime);
         runtime.emit_signal(Box::new(self.clone()));
     }
+
+    /// Emits the signal if it is not yet emitted and returns `true` in this case.
+    fn try_emit(&mut self, runtime: &mut SingleThreadRuntime) -> bool {
+        if self.is_emitted() {
+            false
+        } else {
+            self.emit(runtime);
+            true
+        }
+    }
 }
 
 /// Interface of pure signal, to be used by the user.
@@ -130,5 +140,25 @@ impl ProcessMutSt for Emit<PureSignalSt> {
     {
         self.0.runtime().emit(runtime);
         next.call(runtime, (self, ()));
+    }
+}
+
+/* TryEmit */
+
+impl ProcessSt for TryEmit<PureSignalSt> {
+    fn call<C>(self, runtime: &mut SingleThreadRuntime, next: C)
+        where C: ContinuationSt<Self::Value>
+    {
+        let res = self.0.runtime().try_emit(runtime);
+        next.call(runtime, res);
+    }
+}
+
+impl ProcessMutSt for TryEmit<PureSignalSt> {
+    fn call_mut<C>(self, runtime: &mut SingleThreadRuntime, next: C)
+        where Self: Sized, C: ContinuationSt<(Self, Self::Value)>
+    {
+        let res = self.0.runtime().try_emit(runtime);
+        next.call(runtime, (self, res));
     }
 }

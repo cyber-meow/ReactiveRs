@@ -6,7 +6,7 @@ use continuation::ContinuationPl;
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefPl};
-use signal::pure_signal::{PureSignal, Emit};
+use signal::pure_signal::{PureSignal, Emit, TryEmit};
 
 /// A shared pointer to a signal runtime.
 #[derive(Clone)]
@@ -104,6 +104,25 @@ impl PureSignalRuntimeRef {
         self.execute_present_works(runtime);
         runtime.emit_signal(Box::new(self.clone()));
     }
+
+    /// Emits the signal if it is not yet emitted and returns `true` in this case.
+    fn try_emit(&mut self, runtime: &mut ParallelRuntime) -> bool {
+        {
+            // Important to lock for updating.
+            let mut emitted_guard = self.runtime.emitted.lock().unwrap();
+            if *emitted_guard {
+                return false;
+            }
+            *emitted_guard = true;
+        }
+        while let Some(c) = self.runtime.await_works.try_pop() {
+            runtime.decr_await_counter();
+            runtime.on_current_instant(c);
+        }
+        self.execute_present_works(runtime);
+        runtime.emit_signal(Box::new(self.clone()));
+        return true;
+    }
 }
 
 /// Interface of pure signal, to be used by the user.
@@ -146,5 +165,29 @@ impl ProcessMutPl for Emit<PureSignalPl> {
     {
         self.0.runtime().emit(runtime);
         next.call(runtime, (self, ()));
+    }
+}
+
+/* TryEmit */
+
+impl ConstraintOnValue for TryEmit<PureSignalPl> {
+    type T = bool;
+}
+
+impl ProcessPl for TryEmit<PureSignalPl> {
+    fn call<C>(self, runtime: &mut ParallelRuntime, next: C)
+        where C: ContinuationPl<Self::Value>
+    {
+        let res = self.0.runtime().try_emit(runtime);
+        next.call(runtime, res);
+    }
+}
+
+impl ProcessMutPl for TryEmit<PureSignalPl> {
+    fn call_mut<C>(self, runtime: &mut ParallelRuntime, next: C)
+        where Self: Sized, C: ContinuationPl<(Self, Self::Value)>
+    {
+        let res = self.0.runtime().try_emit(runtime);
+        next.call(runtime, (self, res));
     }
 }
