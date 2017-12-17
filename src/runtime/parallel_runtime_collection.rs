@@ -16,11 +16,14 @@ use runtime::Runtime;
 use runtime::parallel_runtime::{ParallelRuntime, RuntimeStatus};
 use continuation::ContinuationPl;
 
+/// Collect multiple `ParallelRuntime` to form a parallel execution engine.
 pub struct ParallelRuntimeCollection {
     runtimes: Vec<ParallelRuntime>,
 }
 
 impl ParallelRuntimeCollection {
+    /// Creates a new parallel execution engine containing a certain number of
+    /// runtimes. Each runtime is runned in a separeted thread.
     pub fn new(num_runtimes: usize) -> Self {
         if num_runtimes == 0 {
             panic!("There should be at least one runtime!");
@@ -66,7 +69,7 @@ impl ParallelRuntimeCollection {
         ParallelRuntimeCollection { runtimes }
     }
 
-    /// Execute in parallel all the runtimes contained in the collection, with
+    /// Executes in parallel all the runtimes contained in the collection, with
     /// one thread for each runtime.  
     /// When the library is compiled with the feature `abort_if_panic`, the process
     /// that is executing the program is aborted whenever a child thread panics.
@@ -91,6 +94,7 @@ impl ParallelRuntimeCollection {
         });
     }
 
+    /// Adds some work to be executed by the execution engine.
     pub fn register_work(&mut self, c: Box<ContinuationPl<()>>) {
         let runtime = weak_rng().choose_mut(&mut self.runtimes).unwrap();
         runtime.on_current_instant(c);

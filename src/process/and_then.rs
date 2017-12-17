@@ -3,7 +3,7 @@ use continuation::{ContinuationSt, ContinuationPl};
 use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 use process::{ProcessPl, ProcessMutPl, ConstraintOnValue};
 
-/// Chain a computation onto the end of another process.
+/// Chains a computation onto the end of another process.
 pub struct AndThen<P, F> { pub(crate) process: P, pub(crate) chain: F }
 
 impl<P1, P2, F> Process for AndThen<P1, F>

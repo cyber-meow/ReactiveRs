@@ -6,7 +6,7 @@ use continuation::{Continuation, ContinuationSt};
 use process::{Process, ProcessMut, ProcessSt, ProcessMutSt};
 
 /// Creates a process that executes a collection of processes in parallel and collects
-/// the results into a destination `Vec<T>` in the same oreder as they were provided.  
+/// the results into a destination `Vec<T>` in the same order as they were provided.  
 /// However, since the Rust's type system force all the values in a vector to take
 /// the same type and most of the processes have different type from each other,
 /// this may not be very useful.
