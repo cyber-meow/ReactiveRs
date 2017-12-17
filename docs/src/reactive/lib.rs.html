@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="Source to the Rust file `src/lib.rs`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang">
+
+    <title>lib.rs.html -- source</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc source">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><pre class="line-numbers"><span id="1"> 1</span>
+<span id="2"> 2</span>
+<span id="3"> 3</span>
+<span id="4"> 4</span>
+<span id="5"> 5</span>
+<span id="6"> 6</span>
+<span id="7"> 7</span>
+<span id="8"> 8</span>
+<span id="9"> 9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+</pre><pre class="rust ">
+<span class="doccomment">//! A Rust library for reactive programming that reuse the basic constructions of</span>
+<span class="doccomment">//! [ReactiveML] (http://rml.lri.fr/).</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! For the moment being, the library include implementation of underlying runtimes</span>
+<span class="doccomment">//! and continuations that are essential for the execution engines, the module</span>
+<span class="doccomment">//! `process` contating different methods for the creation of new</span>
+<span class="doccomment">//! processes, and four kinds of signals in charge of inter-process communication.  </span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! In most of the time the users only care about modules `process` and `signal`.</span>
+<span class="doccomment">//! However it is not always trivial to build a process due to the necessity of</span>
+<span class="doccomment">//! having a `&#39;static` lifetime for every process. There are two execution</span>
+<span class="doccomment">//! engines for the library: one is parallel and another is not. There isn&#39;t a</span>
+<span class="doccomment">//! difference when defining processes but for signals we must choose the right</span>
+<span class="doccomment">//! version to use. Also notice that every process to be executed by the parallel</span>
+<span class="doccomment">//! engine must implement the traits `Send` and `Sync`.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! I also plan to add some control structures (like `do..while` and `do..until`)</span>
+<span class="doccomment">//! in the library but I don&#39;t have time to work on it at this moment. It will</span>
+<span class="doccomment">//! be also great to modify the traits `process::Process` and `process::ProcessMut`</span>
+<span class="doccomment">//! to enable more intuitive process definition and simpler manipulation.</span>
+
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">either</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">crossbeam</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">rand</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">ordermap</span>;
+
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">runtime</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">continuation</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">process</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">signal</span>;
+
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">process</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">signal</span>::<span class="kw-2">*</span>;
+</pre>
+</section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "reactive";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>
