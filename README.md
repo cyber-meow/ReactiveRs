@@ -4,6 +4,8 @@ Class project of the ENS M1 course
 "[parallel and reactive programming](http://www.di.ens.fr/~beaugnon/cours/parallele_et_reactif/)"
 given by Albert Cohen and Marc Pouzet.
 
+## Overview
+
 For the moment being, the library include implementation of underlying
 runtimes and continuations that are essential for the execution engines,
 the module `process` contating different methods for the creation of new
