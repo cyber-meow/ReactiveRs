@@ -1,3 +1,26 @@
+//! Use the reactive library to implement Sugarscape model.
+//!
+//! I only include the basic moving rule and the reproduction rule here. I planned
+//! to add other features but finally I will not have time to do so. One thing
+//! to notice is that the piston window object cannot be sent or shared between
+//! threads, but with the current version of my library it's impossible to have
+//! some runtime running in the main thread that is able to communicate with
+//! runtimes in other threads through signals. Using the parallel reactive engine
+//! forces everything to implement `Send` and `Sync`. This is surely one thing to
+//! work on if I try to improve this library in the future.
+//!
+//! For the moment being, I need to use explicit concurrent and synchronization
+//! primitives to ensure that I can update the window which lives in the main thread
+//! while using others threads to compute the model. In the ideal case the use of
+//! signals should be totally sufficient to write a program.
+//!
+//! Of course I could also write another model using the non-parallel version of the
+//! library and compare their performance. The code should be very similar, but I
+//! just don't have time to do it now and I may work on it latter.
+//!
+//! Finally, the compilation of the model takes very long time, about 2 to 3 minutes
+//! on my i7 core laptop.
+
 #![type_length_limit="4194304"]
 
 extern crate piston_window;
@@ -13,35 +36,35 @@ use piston_window::*;
 use rand::{Rng, weak_rng};
 use rand::distributions::{Normal, IndependentSample};
 
-use reactive::process::{Process, ProcessMut};
-use reactive::process::{value_proc, join_all};
-use reactive::process::execute_process_parallel_with_main;
-use reactive::process::LoopStatus::{Continue, Exit};
-use reactive::signal::{Signal, PureSignal, ValuedSignal};
-use reactive::signal::parallel::{PureSignalPl, SpmcSignalPl, MpmcSignalPl};
+use reactive::{Process, ProcessMut, value_proc, join_all};
+use reactive::execute_process_parallel_with_main;
+use reactive::{Signal, PureSignal, ValuedSignal, PureSignalPl, SpmcSignalPl, MpmcSignalPl};
+use reactive::LoopStatus::{Continue, Exit};
 
 const WIDTH: usize = 80;
 const HEIGHT: usize = 60;
-const NUM_AGENTS: usize = 120;
+const NUM_AGENTS: usize = 150;
 const MAX_SUGAR: usize = 6;
-const FERTILITY_AGE: (usize, usize) = (15, 80);
+const FERTILITY_AGE: (usize, usize) = (15, 100);
+const MAX_FPS: u64 = 12;
+const NUM_THREADS: usize = 5;
 
 fn main() {
 
     let sugar_dist = gen_sugar_capcity(
         vec![(7, 10), (23, 46), (52, 33)], MAX_SUGAR, 
-        vec![3., 7., 13., 20., 30., 50.], WIDTH, HEIGHT);
+        vec![3., 7., 17., 26., 38., 60.], WIDTH, HEIGHT);
 
     let sim = Simulation {
         sugar_capacity: sugar_dist.clone(),
         sugar_grow_back_rate: 1,
-        sugar_grow_back_interval: 1,
+        sugar_grow_back_interval: 2,
     };
 
     let agent_init = AgentInit {
         init_sugar_range: (40, 61),
         sugar_metabolism_range: (3, 7),
-        max_age_range: (41, 121),
+        max_age_range: (46, 151),
         vision_range: (2, 6),
     };
 
@@ -113,7 +136,6 @@ fn main() {
             .while_proc()
         };
         let female_part = |(ag, _): (Agent, _)| {
-            let name = ag.name.clone();
             ag.reproduce
             .present_else(value_proc(Vec::new()).pause(), value_proc(vec![ag.clone()]))
         };
@@ -306,7 +328,7 @@ fn main() {
         .exit_on_esc(true)
         .build()
         .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
-    window.set_max_fps(4);
+    window.set_max_fps(MAX_FPS);
 
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let ref font = assets.join("FiraSans-Regular.ttf");
@@ -353,7 +375,7 @@ fn main() {
         update_patches
         .join(inform_updated)
         .join(agents_proc)
-        .join(emit_on_agents_signal), 2);
+        .join(emit_on_agents_signal), NUM_THREADS);
 }
 
 #[derive(PartialEq)]
@@ -419,8 +441,9 @@ impl Simulation {
         for ref agent in gs.agents.iter() {
             gs.sugar_dist[agent.pos] = 0;
         }
-        gs.tick = (gs.tick+1) % self.sugar_grow_back_interval;
-        if gs.tick == 0 {
+        // gs.tick = (gs.tick+1) % self.sugar_grow_back_interval;
+        gs.tick += 1;
+        if gs.tick % self.sugar_grow_back_interval == 0 {
             gs.sugar_dist = gs.sugar_dist.zip_map(
                 &self.sugar_capacity,
                 |sugar, sugar_capacity|
@@ -706,6 +729,11 @@ where
     rectangle([0.0, 0.0, 0.0, 0.85], [0.0, 0.0, 270.0, HEIGHT as f64 * 10.0], transform, g);
     line([0.0, 0.0, 0.0, 1.0], 2.0, [0.0, 0.0, 0.0, HEIGHT as f64 * 10.0], transform, g);
     let transform = transform.trans(25.0, 50.0);
+    text(color::WHITE, 28, "Time", &mut config.cache, transform, g).unwrap();
+    let transform = transform.trans(0.0, 35.0);
+    let time = format!("{}", gs.tick);
+    text(color::WHITE, 28, &time, &mut config.cache, transform, g).unwrap();
+    let transform = transform.trans(0.0, 40.0);
     text(color::WHITE, 28, "Number of Agents", &mut config.cache, transform, g).unwrap();
     let transform = transform.trans(0.0, 35.0);
     let num_of_agents = format!("{}", gs.agents.len());

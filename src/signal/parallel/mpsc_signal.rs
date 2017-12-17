@@ -156,7 +156,7 @@ impl<B, D, F> MpscSignalRuntimeRef<B, D, F>
     }
 }
 
-/// Interface of mpsc signal. This is what is directly exposed to users.
+/// A parallel multi-producer, single-consumer signal.
 pub struct MpscSignalPl<B, D, F>(MpscSignalRuntimeRef<B, D, F>);
 
 impl<B, D, F> Clone for MpscSignalPl<B, D, F> {

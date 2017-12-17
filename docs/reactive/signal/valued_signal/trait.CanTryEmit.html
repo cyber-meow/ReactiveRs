@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `single_thread` mod in crate `reactive`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, single_thread">
+    <meta name="description" content="API documentation for the Rust `CanTryEmit` trait in crate `reactive`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, CanTryEmit">
 
-    <title>reactive::signal::single_thread - Rust</title>
+    <title>reactive::signal::valued_signal::CanTryEmit - Rust</title>
 
     <link rel="stylesheet" type="text/css" href="../../../normalize.css">
     <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
@@ -17,7 +17,7 @@
     
     
 </head>
-<body class="rustdoc mod">
+<body class="rustdoc trait">
     <!--[if lte IE 8]>
     <div class="warning">
         This old browser is unsupported and will most likely display funky
@@ -29,7 +29,7 @@
 
     <nav class="sidebar">
         
-        <p class='location'>Module single_thread</p><div class="block items"><ul><li><a href="#structs">Structs</a></li></ul></div><p class='location'><a href='../../index.html'>reactive</a>::<wbr><a href='../index.html'>signal</a></p><script>window.sidebarCurrent = {name: 'single_thread', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script>
+        <p class='location'>Trait CanTryEmit</p><div class="block items"><ul><li><a href="#required-methods">Required Methods</a></li><li><a href="#implementors">Implementors</a></li></ul></div><p class='location'><a href='../../index.html'>reactive</a>::<wbr><a href='../index.html'>signal</a>::<wbr><a href='index.html'>valued_signal</a></p><script>window.sidebarCurrent = {name: 'CanTryEmit', ty: 'trait', relpath: ''};</script><script defer src="sidebar-items.js"></script>
     </nav>
 
     <nav class="sub">
@@ -44,42 +44,23 @@
     </nav>
 
     <section id='main' class="content">
-<h1 class='fqn'><span class='in-band'>Module <a href='../../index.html'>reactive</a>::<wbr><a href='../index.html'>signal</a>::<wbr><a class="mod" href=''>single_thread</a></span><span class='out-of-band'><span id='render-detail'>
+<h1 class='fqn'><span class='in-band'>Trait <a href='../../index.html'>reactive</a>::<wbr><a href='../index.html'>signal</a>::<wbr><a href='index.html'>valued_signal</a>::<wbr><a class="trait" href=''>CanTryEmit</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../../src/reactive/signal/single_thread/mod.rs.html#1-10' title='goto source code'>[src]</a></span></h1>
-<div class='docblock'><p>Signals to use for non-parallel reactive engine.</p>
-</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.MpmcSignalSt.html"
-                                  title='struct reactive::signal::single_thread::MpmcSignalSt'>MpmcSignalSt</a></td>
-                           <td class='docblock-short'>
-                                <p>A non-parallel multi-producer, multi-consumer signal.</p>
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.MpscSignalSt.html"
-                                  title='struct reactive::signal::single_thread::MpscSignalSt'>MpscSignalSt</a></td>
-                           <td class='docblock-short'>
-                                <p>A non-parallel multi-producer, single-consumer signal.</p>
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.PureSignalSt.html"
-                                  title='struct reactive::signal::single_thread::PureSignalSt'>PureSignalSt</a></td>
-                           <td class='docblock-short'>
-                                <p>A non-parallel pure signal.</p>
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.SpmcSignalSt.html"
-                                  title='struct reactive::signal::single_thread::SpmcSignalSt'>SpmcSignalSt</a></td>
-                           <td class='docblock-short'>
-                                <p>A non-parallel single-producer, multi-consumer signal.</p>
-                           </td>
-                       </tr></table></section>
+               </span><a class='srclink' href='../../../src/reactive/signal/valued_signal/try_emit.rs.html#20-23' title='goto source code'>[src]</a></span></h1>
+<pre class='rust trait'>pub trait CanTryEmit&lt;R, A&gt;: SignalRuntimeRefBase&lt;R&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;R: <a class="trait" href="../../../reactive/runtime/trait.Runtime.html" title="trait reactive::runtime::Runtime">Runtime</a>,&nbsp;</span>{
+    fn <a href='#tymethod.try_emit' class='fnname'>try_emit</a>(&amp;mut self, runtime: &amp;mut R, emitted: A) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>;
+}</pre>
+            <h2 id='required-methods'>Required Methods</h2>
+            <div class='methods'>
+        <h3 id='tymethod.try_emit' class='method'><span id='try_emit.v' class='invisible'><code>fn <a href='#tymethod.try_emit' class='fnname'>try_emit</a>(&amp;mut self, runtime: &amp;mut R, emitted: A) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></h3><div class='docblock'><p>Tries to emit a signal and indicates if the emission is successful.</p>
+</div></div>
+        <h2 id='implementors'>Implementors</h2>
+        <ul class='item-list' id='implementors-list'>
+    </ul><script type="text/javascript" async
+                         src="../../../implementors/reactive/signal/valued_signal/trait.CanTryEmit.js">
+                 </script></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>

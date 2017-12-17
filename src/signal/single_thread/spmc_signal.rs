@@ -5,7 +5,7 @@ use runtime::SingleThreadRuntime;
 use continuation::ContinuationSt;
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefSt};
-use signal::valued_signal::{ValuedSignal, SpSignal, CanEmit, GetValue};
+use signal::valued_signal::{ValuedSignal, SpSignal, CanEmit, GetValue, CanTryEmit, TryEmitValue};
 
 /// A shared pointer to a signal runtime.
 pub struct SpmcSignalRuntimeRef<V> {
@@ -88,7 +88,9 @@ impl<V> SignalRuntimeRefSt for SpmcSignalRuntimeRef<V> where V: Clone + 'static 
     }
 }
 
-impl<V> CanEmit<SingleThreadRuntime, V> for SpmcSignalRuntimeRef<V> where V: Clone + 'static {
+impl<V> CanEmit<SingleThreadRuntime, V> for SpmcSignalRuntimeRef<V>
+    where V: Clone + 'static
+{
     fn emit(&mut self, runtime: &mut SingleThreadRuntime, emitted: V) {
         if self.is_emitted() {
             panic!("Multiple emissions of a single-producer signal inside an instant.");
@@ -111,6 +113,19 @@ impl<V> CanEmit<SingleThreadRuntime, V> for SpmcSignalRuntimeRef<V> where V: Clo
     }
 }
 
+impl<V> CanTryEmit<SingleThreadRuntime, V> for SpmcSignalRuntimeRef<V>
+    where V: Clone + 'static
+{
+    fn try_emit(&mut self, runtime: &mut SingleThreadRuntime, emitted: V) -> bool {
+        if self.is_emitted() {
+            false
+        } else {
+            self.emit(runtime, emitted);
+            true
+        }
+    }
+}
+
 impl<V> GetValue<V> for SpmcSignalRuntimeRef<V> where V: Clone {
     /// Returns the value of the signal for the current instant.
     /// The returned value is cloned and can thus be used directly.
@@ -126,7 +141,7 @@ impl<V> SpmcSignalRuntimeRef<V> where V: Clone + 'static {
     }
 }
 
-/// Interface of spmc signal. This is what is directly exposed to users.
+/// A non-parallel single-producer, multi-consumer signal.
 pub struct SpmcSignalSt<V>(SpmcSignalRuntimeRef<V>);
 
 impl<V> Clone for SpmcSignalSt<V> {
@@ -160,5 +175,11 @@ impl<V> SpmcSignalSt<V> where V: Clone + 'static {
         let r = self.runtime();
         let last_v = r.runtime.last_value.borrow();
         last_v.clone()
+    }
+
+    /// Emits a value to the signal only if the signal is not yet emitted.
+    /// Returns a bool to indicate if the emission suceeds or not.
+    pub fn try_emit(&self, emitted: V) -> TryEmitValue<Self, V> {
+        TryEmitValue { signal: self.clone(), emitted }
     }
 }

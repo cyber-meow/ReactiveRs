@@ -1,3 +1,5 @@
+//! A reactive signal without value.
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -105,7 +107,7 @@ impl PureSignalRuntimeRef {
     }
 }
 
-/// Interface of pure signal, to be used by the user.
+/// A non-parallel pure signal.
 #[derive(Clone)]
 pub struct PureSignalSt(PureSignalRuntimeRef);
 

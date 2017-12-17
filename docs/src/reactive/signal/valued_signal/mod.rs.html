@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `src/signal/valued_signal/mod.rs`.">
+    <meta name="description" content="Source to the Rust file `/media/yu-guan/DATA/works/ens/M1/parallel_reactive/Project/reactiveRs/src/signal/valued_signal/mod.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>mod.rs.html -- source</title>
@@ -94,22 +94,21 @@
 <span id="49">49</span>
 <span id="50">50</span>
 <span id="51">51</span>
-<span id="52">52</span>
-<span id="53">53</span>
-<span id="54">54</span>
 </pre><pre class="rust ">
+<span class="doccomment">//! A reactive signal with value.</span>
+
 <span class="kw">mod</span> <span class="ident">emit</span>;
 <span class="kw">mod</span> <span class="ident">await</span>;
 <span class="kw">mod</span> <span class="ident">try_emit</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">emit</span>::{<span class="ident">EmitValue</span>, <span class="ident">CanEmit</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">await</span>::{<span class="ident">AwaitValue</span>, <span class="ident">GetValue</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">try_emit</span>::<span class="ident">TryEmitValue</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">try_emit</span>::{<span class="ident">TryEmitValue</span>, <span class="ident">CanTryEmit</span>};
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">marker</span>::<span class="ident">PhantomData</span>;
 
 <span class="kw">use</span> <span class="ident">signal</span>::<span class="ident">Signal</span>;
 
-<span class="doccomment">/// Defines the behavior of a pure signal. This is the interface exposed to users.</span>
+<span class="doccomment">/// A reactive signal with value.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ValuedSignal</span>: <span class="ident">Signal</span> {
     <span class="doccomment">/// The value stored in the signal.</span>
     <span class="kw">type</span> <span class="ident">Stored</span>;
@@ -123,14 +122,8 @@
         <span class="ident">EmitValue</span> { <span class="ident">signal</span>: <span class="self">self</span>.<span class="ident">clone</span>(), <span class="ident">emitted</span> }
     }
 
-    <span class="doccomment">/// Emits a value to the signal only if the signal is not yet emitted.</span>
-    <span class="doccomment">/// Returns a bool to indicate if the emission suceeds or not.</span>
-    <span class="doccomment">/// This construction is inparticular useful for single-producer signals.</span>
-    <span class="kw">fn</span> <span class="ident">try_emit</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">emitted</span>: <span class="ident">A</span>) <span class="op">-&gt;</span> <span class="ident">TryEmitValue</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">A</span><span class="op">&gt;</span> {
-        <span class="ident">TryEmitValue</span> { <span class="ident">signal</span>: <span class="self">self</span>.<span class="ident">clone</span>(), <span class="ident">emitted</span> }
-    }
-
-    <span class="doccomment">/// Waits the signal to be emitted and gets its content.  </span>
+    <span class="doccomment">/// Waits the signal to be emitted and gets its content.</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// For a single-producer signal the process terminates immediately and for a</span>
     <span class="doccomment">/// multi-producer signal it terminates at the following instant. </span>
     <span class="doccomment">/// For example, when `s1` is a spmc signal and when `s2` is a mpmc signal,</span>
@@ -143,12 +136,13 @@
 <span class="doccomment">/// Define some subtypes that a signal with value can have.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SignalType</span>: <span class="lifetime">&#39;static</span> {}
 
-<span class="doccomment">/// For multi-producer signal, `await` terminates at the following instant.</span>
+<span class="doccomment">/// Multi-producer signal type. For multi-producer signal, `await` terminates at</span>
+<span class="doccomment">/// the following instant.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MpSignal</span>;
 
 <span class="kw">impl</span> <span class="ident">SignalType</span> <span class="kw">for</span> <span class="ident">MpSignal</span> {}
 
-<span class="doccomment">/// For single-producer signal, `await` terminates immediately.</span>
+<span class="doccomment">/// Single-producer signal type. For single-producer signal, `await` terminates immediately.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SpSignal</span>;
 
 <span class="kw">impl</span> <span class="ident">SignalType</span> <span class="kw">for</span> <span class="ident">SpSignal</span> {}

@@ -48,8 +48,9 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../../src/reactive/signal/valued_signal/mod.rs.html#1-54' title='goto source code'>[src]</a></span></h1>
-<h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+               </span><a class='srclink' href='../../../src/reactive/signal/valued_signal/mod.rs.html#1-51' title='goto source code'>[src]</a></span></h1>
+<div class='docblock'><p>A reactive signal with value.</p>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
                        <tr class=' module-item'>
                            <td><a class="struct" href="struct.AwaitValue.html"
@@ -69,27 +70,35 @@
                            <td><a class="struct" href="struct.MpSignal.html"
                                   title='struct reactive::signal::valued_signal::MpSignal'>MpSignal</a></td>
                            <td class='docblock-short'>
-                                <p>For multi-producer signal, <code>await</code> terminates at the following instant.</p>
+                                <p>Multi-producer signal type. For multi-producer signal, <code>await</code> terminates at
+the following instant.</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
                            <td><a class="struct" href="struct.SpSignal.html"
                                   title='struct reactive::signal::valued_signal::SpSignal'>SpSignal</a></td>
                            <td class='docblock-short'>
-                                <p>For single-producer signal, <code>await</code> terminates immediately.</p>
+                                <p>Single-producer signal type. For single-producer signal, <code>await</code> terminates immediately.</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
                            <td><a class="struct" href="struct.TryEmitValue.html"
                                   title='struct reactive::signal::valued_signal::TryEmitValue'>TryEmitValue</a></td>
                            <td class='docblock-short'>
-                                <p>Process that represents an emission of a signal with some value.</p>
+                                <p>Attemps to emit some value. Created by the method <code>try_emit</code>.</p>
                            </td>
                        </tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
 <table>
                        <tr class=' module-item'>
                            <td><a class="trait" href="trait.CanEmit.html"
                                   title='trait reactive::signal::valued_signal::CanEmit'>CanEmit</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.CanTryEmit.html"
+                                  title='trait reactive::signal::valued_signal::CanTryEmit'>CanTryEmit</a></td>
                            <td class='docblock-short'>
                                 
                            </td>
@@ -112,7 +121,7 @@
                            <td><a class="trait" href="trait.ValuedSignal.html"
                                   title='trait reactive::signal::valued_signal::ValuedSignal'>ValuedSignal</a></td>
                            <td class='docblock-short'>
-                                <p>Defines the behavior of a pure signal. This is the interface exposed to users.</p>
+                                <p>A reactive signal with value.</p>
                            </td>
                        </tr></table></section>
     <section id='search' class="content hidden"></section>

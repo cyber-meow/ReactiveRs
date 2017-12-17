@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `src/signal/mod.rs`.">
+    <meta name="description" content="Source to the Rust file `/media/yu-guan/DATA/works/ens/M1/parallel_reactive/Project/reactiveRs/src/signal/mod.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>mod.rs.html -- source</title>
@@ -115,8 +115,10 @@
 <span id="70">70</span>
 <span id="71">71</span>
 <span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
 </pre><pre class="rust ">
-<span class="doccomment">//! Inter-process communication depends on the use of signals.</span>
+<span class="doccomment">//! Inter-process communication relies on the use of signals.</span>
 <span class="doccomment">//! </span>
 <span class="doccomment">//! Four kinds of signals are defined: `PureSignal`, `MpmcSignal`,</span>
 <span class="doccomment">//! `MpscSignal` and `SpmcSignal`.</span>
@@ -130,12 +132,12 @@
 <span class="doccomment">//! one place in the code, and this is not what I look for.</span>
 <span class="doccomment">//! The goal is to force the signal to be emitted or consumed only once at</span>
 <span class="doccomment">//! each instant, but not only once in the whole program. Since I have no idea</span>
-<span class="doccomment">//! how this can be down at compile time, what I did finally is to check this</span>
+<span class="doccomment">//! how this can be down at compile time, what I finally did is to check this</span>
 <span class="doccomment">//! dynamically. The program panics when some undesired behavior is detected.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! On the other hand, the signals used for the non-parallel and the parallel</span>
 <span class="doccomment">//! version of the library are different, so the user must decide which sort</span>
-<span class="doccomment">//! of signal (the parallel or no-parallel ones) to use from the beginning.</span>
+<span class="doccomment">//! of signal (the parallel or non-parallel ones) to use from the beginning.</span>
 <span class="doccomment">//! I would love to have something like in the case of processes: the real </span>
 <span class="doccomment">//! behavior of the signal is only determined when it&#39;s associated with some</span>
 <span class="doccomment">//! particular runtime, but I didn&#39;t find a way to do this.</span>
@@ -153,31 +155,33 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">valued_signal</span>::<span class="ident">ValuedSignal</span>;
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">parallel</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">parallel</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">single_thread</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">single_thread</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">process</span>::<span class="ident">Process</span>;
 
-<span class="doccomment">/// A reactive signal.  </span>
-<span class="doccomment">/// The signal implement the trait `Clone` to assure that it can be used multiple times</span>
+<span class="doccomment">/// A reactive signal.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// The signal implements the trait `Clone` to assure that it can be used multiple times</span>
 <span class="doccomment">/// in the program. However, note that for most of the constructions `clone` is used</span>
-<span class="doccomment">/// implicitly so one can pass the signal directly.</span>
+<span class="doccomment">/// implicitly so one just need to pass the signal directly.</span>
 <span class="doccomment">/// The user needs to call `clone` explicitly only in scenarios where the signal&#39;s</span>
 <span class="doccomment">/// ownership must be shared in different places, ex: closure.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Signal</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="lifetime">&#39;static</span> {
-    <span class="doccomment">/// The runtime reference type associated with the signal.</span>
+    <span class="doccomment">/// The runtime reference associated with the signal.</span>
     <span class="kw">type</span> <span class="ident">RuntimeRef</span>;
     
     <span class="doccomment">/// Returns a reference to the signal&#39;s runtime.</span>
     <span class="kw">fn</span> <span class="ident">runtime</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">RuntimeRef</span>;
     
-    <span class="doccomment">/// Returns a process that waits for the next emission of the signal, current instant</span>
-    <span class="doccomment">/// included.</span>
+    <span class="doccomment">/// Returns a process that waits for the emission of the signal.</span>
     <span class="kw">fn</span> <span class="ident">await_immediate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">AwaitImmediate</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="self">Self</span>: <span class="ident">Sized</span> {
         <span class="ident">AwaitImmediate</span>(<span class="self">self</span>.<span class="ident">clone</span>())
     }
     
     <span class="doccomment">/// Test the status of a signal `s`. If the signal is present, the process `p1`</span>
-    <span class="doccomment">/// is executed instantaneously, other wise `p2` is executed at the following instant.</span>
+    <span class="doccomment">/// is executed instantaneously, otherwise `p2` is executed at the following instant.</span>
     <span class="kw">fn</span> <span class="ident">present_else</span><span class="op">&lt;</span><span class="ident">P1</span>, <span class="ident">P2</span>, <span class="ident">V</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">p1</span>: <span class="ident">P1</span>, <span class="ident">p2</span>: <span class="ident">P2</span>) <span class="op">-&gt;</span> <span class="ident">PresentElse</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">P1</span>, <span class="ident">P2</span><span class="op">&gt;</span>
         <span class="kw">where</span> <span class="self">Self</span>: <span class="ident">Sized</span>, <span class="ident">P1</span>: <span class="ident">Process</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">=</span><span class="ident">V</span><span class="op">&gt;</span>, <span class="ident">P2</span>: <span class="ident">Process</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">=</span><span class="ident">V</span><span class="op">&gt;</span>
     {

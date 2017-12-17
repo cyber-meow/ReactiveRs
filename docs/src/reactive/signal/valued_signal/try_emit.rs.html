@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `src/signal/valued_signal/try_emit.rs`.">
+    <meta name="description" content="Source to the Rust file `/media/yu-guan/DATA/works/ens/M1/parallel_reactive/Project/reactiveRs/src/signal/valued_signal/try_emit.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>try_emit.rs.html -- source</title>
@@ -116,14 +116,21 @@
 <span id="71">71</span>
 <span id="72">72</span>
 <span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
 </pre><pre class="rust ">
-<span class="kw">use</span> <span class="ident">runtime</span>::{<span class="ident">SingleThreadRuntime</span>, <span class="ident">ParallelRuntime</span>};
+<span class="kw">use</span> <span class="ident">runtime</span>::{<span class="ident">Runtime</span>, <span class="ident">SingleThreadRuntime</span>, <span class="ident">ParallelRuntime</span>};
 <span class="kw">use</span> <span class="ident">continuation</span>::{<span class="ident">ContinuationSt</span>, <span class="ident">ContinuationPl</span>};
 <span class="kw">use</span> <span class="ident">process</span>::{<span class="ident">Process</span>, <span class="ident">ProcessMut</span>, <span class="ident">ProcessSt</span>, <span class="ident">ProcessMutSt</span>};
 <span class="kw">use</span> <span class="ident">process</span>::{<span class="ident">ProcessPl</span>, <span class="ident">ProcessMutPl</span>, <span class="ident">ConstraintOnValue</span>};
-<span class="kw">use</span> <span class="ident">signal</span>::<span class="ident">valued_signal</span>::{<span class="ident">ValuedSignal</span>, <span class="ident">CanEmit</span>};
+<span class="kw">use</span> <span class="ident">signal</span>::<span class="ident">signal_runtime</span>::<span class="ident">SignalRuntimeRefBase</span>;
+<span class="kw">use</span> <span class="ident">signal</span>::<span class="ident">valued_signal</span>::<span class="ident">ValuedSignal</span>;
 
-<span class="doccomment">/// Process that represents an emission of a signal with some value.</span>
+<span class="doccomment">/// Attemps to emit some value. Created by the method `try_emit`.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TryEmitValue</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">signal</span>: <span class="ident">S</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">emitted</span>: <span class="ident">A</span>,
@@ -135,10 +142,15 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span> <span class="ident">ProcessMut</span> <span class="kw">for</span> <span class="ident">TryEmitValue</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">ValuedSignal</span>, <span class="ident">A</span>: <span class="lifetime">&#39;static</span> {}
 
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">CanTryEmit</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">A</span><span class="op">&gt;</span>: <span class="ident">SignalRuntimeRefBase</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">R</span>: <span class="ident">Runtime</span> {
+    <span class="doccomment">/// Tries to emit a signal and indicates if the emission is successful.</span>
+    <span class="kw">fn</span> <span class="ident">try_emit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">runtime</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>, <span class="ident">emitted</span>: <span class="ident">A</span>) <span class="op">-&gt;</span> <span class="ident">bool</span>;
+}
+
 <span class="comment">// Non-parallel</span>
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span> <span class="ident">ProcessSt</span> <span class="kw">for</span> <span class="ident">TryEmitValue</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span>
-    <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">ValuedSignal</span>, <span class="ident">S</span>::<span class="ident">RuntimeRef</span>: <span class="ident">CanEmit</span><span class="op">&lt;</span><span class="ident">SingleThreadRuntime</span>, <span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">A</span>: <span class="lifetime">&#39;static</span>
+    <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">ValuedSignal</span>, <span class="ident">S</span>::<span class="ident">RuntimeRef</span>: <span class="ident">CanTryEmit</span><span class="op">&lt;</span><span class="ident">SingleThreadRuntime</span>, <span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">A</span>: <span class="lifetime">&#39;static</span>
 {
     <span class="kw">fn</span> <span class="ident">call</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">runtime</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SingleThreadRuntime</span>, <span class="ident">next</span>: <span class="ident">C</span>)
         <span class="kw">where</span> <span class="ident">C</span>: <span class="ident">ContinuationSt</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Value</span><span class="op">&gt;</span>
@@ -149,7 +161,7 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span> <span class="ident">ProcessMutSt</span> <span class="kw">for</span> <span class="ident">TryEmitValue</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span>
-    <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">ValuedSignal</span>, <span class="ident">S</span>::<span class="ident">RuntimeRef</span>: <span class="ident">CanEmit</span><span class="op">&lt;</span><span class="ident">SingleThreadRuntime</span>, <span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">A</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>
+    <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">ValuedSignal</span>, <span class="ident">S</span>::<span class="ident">RuntimeRef</span>: <span class="ident">CanTryEmit</span><span class="op">&lt;</span><span class="ident">SingleThreadRuntime</span>, <span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">A</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>
 {
     <span class="kw">fn</span> <span class="ident">call_mut</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">runtime</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SingleThreadRuntime</span>, <span class="ident">next</span>: <span class="ident">C</span>)
         <span class="kw">where</span> <span class="self">Self</span>: <span class="ident">Sized</span>, <span class="ident">C</span>: <span class="ident">ContinuationSt</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="self">Self</span>::<span class="ident">Value</span>)<span class="op">&gt;</span>
@@ -167,7 +179,7 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span> <span class="ident">ProcessPl</span> <span class="kw">for</span> <span class="ident">TryEmitValue</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span>
     <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">ValuedSignal</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>,
-          <span class="ident">S</span>::<span class="ident">RuntimeRef</span>: <span class="ident">CanEmit</span><span class="op">&lt;</span><span class="ident">ParallelRuntime</span>, <span class="ident">A</span><span class="op">&gt;</span>,
+          <span class="ident">S</span>::<span class="ident">RuntimeRef</span>: <span class="ident">CanTryEmit</span><span class="op">&lt;</span><span class="ident">ParallelRuntime</span>, <span class="ident">A</span><span class="op">&gt;</span>,
           <span class="ident">A</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
 {
     <span class="kw">fn</span> <span class="ident">call</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">runtime</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ParallelRuntime</span>, <span class="ident">next</span>: <span class="ident">C</span>)
@@ -180,7 +192,7 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span> <span class="ident">ProcessMutPl</span> <span class="kw">for</span> <span class="ident">TryEmitValue</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">A</span><span class="op">&gt;</span>
     <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">ValuedSignal</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>,
-          <span class="ident">S</span>::<span class="ident">RuntimeRef</span>: <span class="ident">CanEmit</span><span class="op">&lt;</span><span class="ident">ParallelRuntime</span>, <span class="ident">A</span><span class="op">&gt;</span>,
+          <span class="ident">S</span>::<span class="ident">RuntimeRef</span>: <span class="ident">CanTryEmit</span><span class="op">&lt;</span><span class="ident">ParallelRuntime</span>, <span class="ident">A</span><span class="op">&gt;</span>,
           <span class="ident">A</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
 {
     <span class="kw">fn</span> <span class="ident">call_mut</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">runtime</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ParallelRuntime</span>, <span class="ident">next</span>: <span class="ident">C</span>)

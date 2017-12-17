@@ -160,7 +160,7 @@ impl<B, F> MpmcSignalRuntimeRef<B, F>
     }
 }
 
-/// Interface of mpmc signal. This is what is directly exposed to users.
+/// A parallel multi-producer, multi-consumer signal.
 pub struct MpmcSignalPl<B, F>(MpmcSignalRuntimeRef<B, F>);
 
 impl<B, F> Clone for MpmcSignalPl<B, F> {

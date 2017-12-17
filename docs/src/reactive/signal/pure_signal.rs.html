@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `src/signal/pure_signal.rs`.">
+    <meta name="description" content="Source to the Rust file `/media/yu-guan/DATA/works/ens/M1/parallel_reactive/Project/reactiveRs/src/signal/pure_signal.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>pure_signal.rs.html -- source</title>
@@ -76,11 +76,19 @@
 <span id="31">31</span>
 <span id="32">32</span>
 <span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
 </pre><pre class="rust ">
+<span class="doccomment">//! A reactive signal without value.</span>
+
 <span class="kw">use</span> <span class="ident">process</span>::{<span class="ident">Process</span>, <span class="ident">ProcessMut</span>};
 <span class="kw">use</span> <span class="ident">signal</span>::<span class="ident">Signal</span>;
 
-<span class="doccomment">/// Defines the behavior of a pure signal. This is the interface exposed to users.</span>
+<span class="doccomment">/// Defines the behavior of a pure signal.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">PureSignal</span>: <span class="ident">Signal</span> {
     <span class="doccomment">/// Creates a new pure signal.</span>
     <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-&gt;</span> <span class="self">Self</span>;
@@ -90,11 +98,14 @@
         <span class="ident">Emit</span>(<span class="self">self</span>.<span class="ident">clone</span>())
     }
 
+    <span class="doccomment">/// Emits the signal if it is not yet emitted and returns a bool indicating</span>
+    <span class="doccomment">/// if the emission is successful.</span>
     <span class="kw">fn</span> <span class="ident">try_emit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">TryEmit</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="self">Self</span>: <span class="ident">Sized</span> {
         <span class="ident">TryEmit</span>(<span class="self">self</span>.<span class="ident">clone</span>())
     }
 }
 
+<span class="doccomment">/// Emits a pure signal.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Emit</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">S</span>);
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> <span class="ident">Process</span> <span class="kw">for</span> <span class="ident">Emit</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">PureSignal</span> {
@@ -103,6 +114,7 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> <span class="ident">ProcessMut</span> <span class="kw">for</span> <span class="ident">Emit</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">PureSignal</span> {}
 
+<span class="doccomment">/// Emits a pure signal if it is not yet emitted. Created by the `try_emit` method.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TryEmit</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">S</span>);
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> <span class="ident">Process</span> <span class="kw">for</span> <span class="ident">TryEmit</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">PureSignal</span> {

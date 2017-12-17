@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Emit",""],["TryEmit",""]],"trait":[["PureSignal","Defines the behavior of a pure signal. This is the interface exposed to users."]]});
+initSidebarItems({"struct":[["Emit","Emits a pure signal."],["TryEmit","Emits a pure signal if it is not yet emitted. Created by the `try_emit` method."]],"trait":[["PureSignal","Defines the behavior of a pure signal."]]});

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `src/signal/single_thread/mpsc_signal.rs`.">
+    <meta name="description" content="Source to the Rust file `/media/yu-guan/DATA/works/ens/M1/parallel_reactive/Project/reactiveRs/src/signal/single_thread/mpsc_signal.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>mpsc_signal.rs.html -- source</title>
@@ -373,7 +373,7 @@
     }
 }
 
-<span class="doccomment">/// Interface of mpsc signal. This is what is directly exposed to users.</span>
+<span class="doccomment">/// A non-parallel multi-producer, single-consumer signal.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MpscSignalSt</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">D</span>, <span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">MpscSignalRuntimeRef</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">D</span>, <span class="ident">F</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">D</span>, <span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Clone</span> <span class="kw">for</span> <span class="ident">MpscSignalSt</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">D</span>, <span class="ident">F</span><span class="op">&gt;</span> {

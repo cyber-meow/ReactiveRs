@@ -29,7 +29,7 @@
 
     <nav class="sidebar">
         
-        <p class='location'>Trait CanEmit</p><div class="block items"><ul><li><a href="#required-methods">Required Methods</a></li><li><a href="#provided-methods">Provided Methods</a></li><li><a href="#implementors">Implementors</a></li></ul></div><p class='location'><a href='../../index.html'>reactive</a>::<wbr><a href='../index.html'>signal</a>::<wbr><a href='index.html'>valued_signal</a></p><script>window.sidebarCurrent = {name: 'CanEmit', ty: 'trait', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+        <p class='location'>Trait CanEmit</p><div class="block items"><ul><li><a href="#required-methods">Required Methods</a></li><li><a href="#implementors">Implementors</a></li></ul></div><p class='location'><a href='../../index.html'>reactive</a>::<wbr><a href='../index.html'>signal</a>::<wbr><a href='index.html'>valued_signal</a></p><script>window.sidebarCurrent = {name: 'CanEmit', ty: 'trait', relpath: ''};</script><script defer src="sidebar-items.js"></script>
     </nav>
 
     <nav class="sub">
@@ -48,19 +48,13 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../../src/reactive/signal/valued_signal/emit.rs.html#20-33' title='goto source code'>[src]</a></span></h1>
+               </span><a class='srclink' href='../../../src/reactive/signal/valued_signal/emit.rs.html#20-23' title='goto source code'>[src]</a></span></h1>
 <pre class='rust trait'>pub trait CanEmit&lt;R, A&gt;: SignalRuntimeRefBase&lt;R&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;R: <a class="trait" href="../../../reactive/runtime/trait.Runtime.html" title="trait reactive::runtime::Runtime">Runtime</a>,&nbsp;</span>{
     fn <a href='#tymethod.emit' class='fnname'>emit</a>(&amp;mut self, runtime: &amp;mut R, emitted: A);
-
-    fn <a href='#method.try_emit' class='fnname'>try_emit</a>(&amp;mut self, runtime: &amp;mut R, emitted: A) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> { ... }
 }</pre>
             <h2 id='required-methods'>Required Methods</h2>
             <div class='methods'>
         <h3 id='tymethod.emit' class='method'><span id='emit.v' class='invisible'><code>fn <a href='#tymethod.emit' class='fnname'>emit</a>(&amp;mut self, runtime: &amp;mut R, emitted: A)</code></span></h3><div class='docblock'><p>Emits the value <code>emitted</code> to the signal.</p>
-</div></div>
-            <h2 id='provided-methods'>Provided Methods</h2>
-            <div class='methods'>
-        <h3 id='method.try_emit' class='method'><span id='try_emit.v' class='invisible'><code>fn <a href='#method.try_emit' class='fnname'>try_emit</a>(&amp;mut self, runtime: &amp;mut R, emitted: A) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></h3><div class='docblock'><p>Tries to emit a signal and indicates the emission is successful.</p>
 </div></div>
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>

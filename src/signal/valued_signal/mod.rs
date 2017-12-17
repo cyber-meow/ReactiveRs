@@ -1,15 +1,17 @@
+//! A reactive signal with value.
+
 mod emit;
 mod await;
 mod try_emit;
 pub use self::emit::{EmitValue, CanEmit};
 pub use self::await::{AwaitValue, GetValue};
-pub use self::try_emit::TryEmitValue;
+pub use self::try_emit::{TryEmitValue, CanTryEmit};
 
 use std::marker::PhantomData;
 
 use signal::Signal;
 
-/// Defines the behavior of a pure signal. This is the interface exposed to users.
+/// A reactive signal with value.
 pub trait ValuedSignal: Signal {
     /// The value stored in the signal.
     type Stored;
@@ -23,14 +25,8 @@ pub trait ValuedSignal: Signal {
         EmitValue { signal: self.clone(), emitted }
     }
 
-    /// Emits a value to the signal only if the signal is not yet emitted.
-    /// Returns a bool to indicate if the emission suceeds or not.
-    /// This construction is inparticular useful for single-producer signals.
-    fn try_emit<A>(&self, emitted: A) -> TryEmitValue<Self, A> {
-        TryEmitValue { signal: self.clone(), emitted }
-    }
-
-    /// Waits the signal to be emitted and gets its content.  
+    /// Waits the signal to be emitted and gets its content.
+    ///
     /// For a single-producer signal the process terminates immediately and for a
     /// multi-producer signal it terminates at the following instant. 
     /// For example, when `s1` is a spmc signal and when `s2` is a mpmc signal,
@@ -43,12 +39,13 @@ pub trait ValuedSignal: Signal {
 /// Define some subtypes that a signal with value can have.
 pub trait SignalType: 'static {}
 
-/// For multi-producer signal, `await` terminates at the following instant.
+/// Multi-producer signal type. For multi-producer signal, `await` terminates at
+/// the following instant.
 pub struct MpSignal;
 
 impl SignalType for MpSignal {}
 
-/// For single-producer signal, `await` terminates immediately.
+/// Single-producer signal type. For single-producer signal, `await` terminates immediately.
 pub struct SpSignal;
 
 impl SignalType for SpSignal {}

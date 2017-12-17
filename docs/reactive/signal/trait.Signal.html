@@ -48,7 +48,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../src/reactive/signal/mod.rs.html#48-72' title='goto source code'>[src]</a></span></h1>
+               </span><a class='srclink' href='../../src/reactive/signal/mod.rs.html#51-74' title='goto source code'>[src]</a></span></h1>
 <pre class='rust trait'>pub trait Signal: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> + 'static {
     type <a href='#associatedtype.RuntimeRef' class="type">RuntimeRef</a>;
     fn <a href='#tymethod.runtime' class='fnname'>runtime</a>(&amp;self) -&gt; Self::<a class="type" href="../../reactive/signal/trait.Signal.html#associatedtype.RuntimeRef" title="type reactive::signal::Signal::RuntimeRef">RuntimeRef</a>;
@@ -57,16 +57,17 @@
     { ... }
 <div class='item-spacer'></div>    fn <a href='#method.present_else' class='fnname'>present_else</a>&lt;P1, P2, V&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&amp;self, <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;p1: P1, <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;p2: P2<br>&nbsp;&nbsp;&nbsp;&nbsp;) -&gt; <a class="struct" href="../../reactive/signal/struct.PresentElse.html" title="struct reactive::signal::PresentElse">PresentElse</a>&lt;Self, P1, P2&gt;<br>&nbsp;&nbsp;&nbsp; <span class="where">where<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;P1: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>&lt;Value = V&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;P2: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>&lt;Value = V&gt;</span>,
     { ... }
-}</pre><div class='docblock'><p>A reactive signal.<br>
-The signal implement the trait <code>Clone</code> to assure that it can be used multiple times
+}</pre><div class='docblock'><p>A reactive signal.</p>
+
+<p>The signal implements the trait <code>Clone</code> to assure that it can be used multiple times
 in the program. However, note that for most of the constructions <code>clone</code> is used
-implicitly so one can pass the signal directly.
+implicitly so one just need to pass the signal directly.
 The user needs to call <code>clone</code> explicitly only in scenarios where the signal&#39;s
 ownership must be shared in different places, ex: closure.</p>
 </div>
             <h2 id='associated-types'>Associated Types</h2>
             <div class='methods'>
-        <h3 id='associatedtype.RuntimeRef' class='method'><span id='RuntimeRef.t' class='invisible'><code>type <a href='#associatedtype.RuntimeRef' class="type">RuntimeRef</a></code></span></h3><div class='docblock'><p>The runtime reference type associated with the signal.</p>
+        <h3 id='associatedtype.RuntimeRef' class='method'><span id='RuntimeRef.t' class='invisible'><code>type <a href='#associatedtype.RuntimeRef' class="type">RuntimeRef</a></code></span></h3><div class='docblock'><p>The runtime reference associated with the signal.</p>
 </div></div>
             <h2 id='required-methods'>Required Methods</h2>
             <div class='methods'>
@@ -74,10 +75,9 @@ ownership must be shared in different places, ex: closure.</p>
 </div></div>
             <h2 id='provided-methods'>Provided Methods</h2>
             <div class='methods'>
-        <h3 id='method.await_immediate' class='method'><span id='await_immediate.v' class='invisible'><code>fn <a href='#method.await_immediate' class='fnname'>await_immediate</a>(&amp;self) -&gt; <a class="struct" href="../../reactive/signal/struct.AwaitImmediate.html" title="struct reactive::signal::AwaitImmediate">AwaitImmediate</a>&lt;Self&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h3><div class='docblock'><p>Returns a process that waits for the next emission of the signal, current instant
-included.</p>
+        <h3 id='method.await_immediate' class='method'><span id='await_immediate.v' class='invisible'><code>fn <a href='#method.await_immediate' class='fnname'>await_immediate</a>(&amp;self) -&gt; <a class="struct" href="../../reactive/signal/struct.AwaitImmediate.html" title="struct reactive::signal::AwaitImmediate">AwaitImmediate</a>&lt;Self&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h3><div class='docblock'><p>Returns a process that waits for the emission of the signal.</p>
 </div><h3 id='method.present_else' class='method'><span id='present_else.v' class='invisible'><code>fn <a href='#method.present_else' class='fnname'>present_else</a>&lt;P1, P2, V&gt;(&amp;self, p1: P1, p2: P2) -&gt; <a class="struct" href="../../reactive/signal/struct.PresentElse.html" title="struct reactive::signal::PresentElse">PresentElse</a>&lt;Self, P1, P2&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;P1: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>&lt;Value = V&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;P2: <a class="trait" href="../../reactive/process/trait.Process.html" title="trait reactive::process::Process">Process</a>&lt;Value = V&gt;,&nbsp;</span></code></span></h3><div class='docblock'><p>Test the status of a signal <code>s</code>. If the signal is present, the process <code>p1</code>
-is executed instantaneously, other wise <code>p2</code> is executed at the following instant.</p>
+is executed instantaneously, otherwise <code>p2</code> is executed at the following instant.</p>
 </div></div>
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>

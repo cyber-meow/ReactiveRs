@@ -125,7 +125,7 @@ impl PureSignalRuntimeRef {
     }
 }
 
-/// Interface of pure signal, to be used by the user.
+/// A parallel pure signal.
 #[derive(Clone)]
 pub struct PureSignalPl(PureSignalRuntimeRef);
 

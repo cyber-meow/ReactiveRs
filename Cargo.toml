@@ -24,5 +24,4 @@ name = "reactive"
 
 [[example]]
 name = "sugarscape"
-path = "src/examples/sugarscape.rs"
-#doc = false
+path = "examples/sugarscape.rs"

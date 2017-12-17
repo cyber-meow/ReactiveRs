@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `src/signal/valued_signal/emit.rs`.">
+    <meta name="description" content="Source to the Rust file `/media/yu-guan/DATA/works/ens/M1/parallel_reactive/Project/reactiveRs/src/signal/valued_signal/emit.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>emit.rs.html -- source</title>
@@ -122,16 +122,6 @@
 <span id="77">77</span>
 <span id="78">78</span>
 <span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
-<span id="86">86</span>
-<span id="87">87</span>
-<span id="88">88</span>
-<span id="89">89</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">runtime</span>::{<span class="ident">Runtime</span>, <span class="ident">SingleThreadRuntime</span>, <span class="ident">ParallelRuntime</span>};
 <span class="kw">use</span> <span class="ident">continuation</span>::{<span class="ident">ContinuationSt</span>, <span class="ident">ContinuationPl</span>};
@@ -155,16 +145,6 @@
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">CanEmit</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">A</span><span class="op">&gt;</span>: <span class="ident">SignalRuntimeRefBase</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">R</span>: <span class="ident">Runtime</span> {
     <span class="doccomment">/// Emits the value `emitted` to the signal.</span>
     <span class="kw">fn</span> <span class="ident">emit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">runtime</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>, <span class="ident">emitted</span>: <span class="ident">A</span>);
-    
-    <span class="doccomment">/// Tries to emit a signal and indicates the emission is successful.</span>
-    <span class="kw">fn</span> <span class="ident">try_emit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">runtime</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>, <span class="ident">emitted</span>: <span class="ident">A</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_emitted</span>() {
-            <span class="bool-val">false</span>
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">emit</span>(<span class="ident">runtime</span>, <span class="ident">emitted</span>);
-            <span class="bool-val">true</span>
-        }
-    }
 }
 
 <span class="comment">// Non-parallel</span>

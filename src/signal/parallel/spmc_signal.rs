@@ -5,7 +5,7 @@ use runtime::ParallelRuntime;
 use continuation::ContinuationPl;
 use signal::Signal;
 use signal::signal_runtime::{SignalRuntimeRefBase, SignalRuntimeRefPl};
-use signal::valued_signal::{ValuedSignal, SpSignal, CanEmit, GetValue};
+use signal::valued_signal::{ValuedSignal, SpSignal, CanEmit, GetValue, CanTryEmit, TryEmitValue};
 
 /// A shared pointer to a signal runtime.
 pub struct SpmcSignalRuntimeRef<V> {
@@ -129,6 +129,37 @@ impl<V> CanEmit<ParallelRuntime, V> for SpmcSignalRuntimeRef<V>
     }
 }
 
+impl<V> CanTryEmit<ParallelRuntime, V> for SpmcSignalRuntimeRef<V>
+    where V: Clone + Send + Sync + 'static
+{
+    fn try_emit(&mut self, runtime: &mut ParallelRuntime, emitted: V) -> bool {
+        {
+            let mut value_guard = self.runtime.value.lock().unwrap();
+            if value_guard.is_some() {
+                return false;
+            }
+            *value_guard = Some(emitted);
+        }
+        while let Some(c) = self.runtime.await_works.try_pop() {
+            runtime.decr_await_counter();
+            runtime.on_current_instant(c);
+        }
+        self.execute_present_works(runtime);
+        runtime.emit_signal(Box::new(self.clone()));
+        let signal_ref = self.clone();
+        let update_last_value = move |_: &mut ParallelRuntime, ()| {
+            let mut updated = signal_ref.runtime.last_value_updated.lock().unwrap();
+            if !*updated {
+                *updated = true;
+                drop(updated);
+                *signal_ref.runtime.last_value.lock().unwrap() = Some(signal_ref.get_value());
+            }
+        };
+        runtime.on_end_of_instant(Box::new(update_last_value));
+        return true;
+    }
+}
+
 impl<V> GetValue<V> for SpmcSignalRuntimeRef<V> where V: Clone {
     /// Returns the value of the signal for the current instant.
     /// The returned value is cloned and can thus be used directly.
@@ -144,7 +175,7 @@ impl<V> SpmcSignalRuntimeRef<V> where V: Clone + Send + Sync + 'static {
     }
 }
 
-/// Interface of spmc signal. This is what is directly exposed to users.
+/// A parallel single-producer, multi-consumer signal.
 pub struct SpmcSignalPl<V>(SpmcSignalRuntimeRef<V>);
 
 impl<V> Clone for SpmcSignalPl<V> {
@@ -178,5 +209,11 @@ impl<V> SpmcSignalPl<V> where V: Clone + Send + Sync + 'static {
         let r = self.runtime();
         let last_v = r.runtime.last_value.lock().unwrap();
         last_v.clone()
+    }
+
+    /// Emits a value to the signal only if the signal is not yet emitted.
+    /// Returns a bool to indicate if the emission suceeds or not.
+    pub fn try_emit(&self, emitted: V) -> TryEmitValue<Self, V> {
+        TryEmitValue { signal: self.clone(), emitted }
     }
 }

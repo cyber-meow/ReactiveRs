@@ -1,3 +1,5 @@
+//! Signals to use for parallel reactive engine.
+
 mod pure_signal;
 mod mpmc_signal;
 mod mpsc_signal;

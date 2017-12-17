@@ -20,16 +20,6 @@ impl<S, A> ProcessMut for EmitValue<S, A> where S: ValuedSignal, A: 'static {}
 pub trait CanEmit<R, A>: SignalRuntimeRefBase<R> where R: Runtime {
     /// Emits the value `emitted` to the signal.
     fn emit(&mut self, runtime: &mut R, emitted: A);
-    
-    /// Tries to emit a signal and indicates the emission is successful.
-    fn try_emit(&mut self, runtime: &mut R, emitted: A) -> bool {
-        if self.is_emitted() {
-            false
-        } else {
-            self.emit(runtime, emitted);
-            true
-        }
-    }
 }
 
 // Non-parallel

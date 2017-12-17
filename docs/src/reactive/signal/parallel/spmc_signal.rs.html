@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `src/signal/parallel/spmc_signal.rs`.">
+    <meta name="description" content="Source to the Rust file `/media/yu-guan/DATA/works/ens/M1/parallel_reactive/Project/reactiveRs/src/signal/parallel/spmc_signal.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>spmc_signal.rs.html -- source</title>
@@ -225,6 +225,43 @@
 <span id="180">180</span>
 <span id="181">181</span>
 <span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
 <span class="kw">use</span> <span class="ident">crossbeam</span>::<span class="ident">sync</span>::<span class="ident">TreiberStack</span>;
@@ -233,7 +270,7 @@
 <span class="kw">use</span> <span class="ident">continuation</span>::<span class="ident">ContinuationPl</span>;
 <span class="kw">use</span> <span class="ident">signal</span>::<span class="ident">Signal</span>;
 <span class="kw">use</span> <span class="ident">signal</span>::<span class="ident">signal_runtime</span>::{<span class="ident">SignalRuntimeRefBase</span>, <span class="ident">SignalRuntimeRefPl</span>};
-<span class="kw">use</span> <span class="ident">signal</span>::<span class="ident">valued_signal</span>::{<span class="ident">ValuedSignal</span>, <span class="ident">SpSignal</span>, <span class="ident">CanEmit</span>, <span class="ident">GetValue</span>};
+<span class="kw">use</span> <span class="ident">signal</span>::<span class="ident">valued_signal</span>::{<span class="ident">ValuedSignal</span>, <span class="ident">SpSignal</span>, <span class="ident">CanEmit</span>, <span class="ident">GetValue</span>, <span class="ident">CanTryEmit</span>, <span class="ident">TryEmitValue</span>};
 
 <span class="doccomment">/// A shared pointer to a signal runtime.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SpmcSignalRuntimeRef</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> {
@@ -357,6 +394,37 @@
     }
 }
 
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> <span class="ident">CanTryEmit</span><span class="op">&lt;</span><span class="ident">ParallelRuntime</span>, <span class="ident">V</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SpmcSignalRuntimeRef</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>
+    <span class="kw">where</span> <span class="ident">V</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>
+{
+    <span class="kw">fn</span> <span class="ident">try_emit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">runtime</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ParallelRuntime</span>, <span class="ident">emitted</span>: <span class="ident">V</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">value_guard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">runtime</span>.<span class="ident">value</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+            <span class="kw">if</span> <span class="ident">value_guard</span>.<span class="ident">is_some</span>() {
+                <span class="kw">return</span> <span class="bool-val">false</span>;
+            }
+            <span class="kw-2">*</span><span class="ident">value_guard</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">emitted</span>);
+        }
+        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">c</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">runtime</span>.<span class="ident">await_works</span>.<span class="ident">try_pop</span>() {
+            <span class="ident">runtime</span>.<span class="ident">decr_await_counter</span>();
+            <span class="ident">runtime</span>.<span class="ident">on_current_instant</span>(<span class="ident">c</span>);
+        }
+        <span class="self">self</span>.<span class="ident">execute_present_works</span>(<span class="ident">runtime</span>);
+        <span class="ident">runtime</span>.<span class="ident">emit_signal</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">clone</span>()));
+        <span class="kw">let</span> <span class="ident">signal_ref</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">update_last_value</span> <span class="op">=</span> <span class="kw">move</span> <span class="op">|</span>_: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ParallelRuntime</span>, ()<span class="op">|</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">updated</span> <span class="op">=</span> <span class="ident">signal_ref</span>.<span class="ident">runtime</span>.<span class="ident">last_value_updated</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+            <span class="kw">if</span> <span class="op">!</span><span class="kw-2">*</span><span class="ident">updated</span> {
+                <span class="kw-2">*</span><span class="ident">updated</span> <span class="op">=</span> <span class="bool-val">true</span>;
+                <span class="ident">drop</span>(<span class="ident">updated</span>);
+                <span class="kw-2">*</span><span class="ident">signal_ref</span>.<span class="ident">runtime</span>.<span class="ident">last_value</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>() <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">signal_ref</span>.<span class="ident">get_value</span>());
+            }
+        };
+        <span class="ident">runtime</span>.<span class="ident">on_end_of_instant</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">update_last_value</span>));
+        <span class="kw">return</span> <span class="bool-val">true</span>;
+    }
+}
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> <span class="ident">GetValue</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SpmcSignalRuntimeRef</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">V</span>: <span class="ident">Clone</span> {
     <span class="doccomment">/// Returns the value of the signal for the current instant.</span>
     <span class="doccomment">/// The returned value is cloned and can thus be used directly.</span>
@@ -372,7 +440,7 @@
     }
 }
 
-<span class="doccomment">/// Interface of spmc signal. This is what is directly exposed to users.</span>
+<span class="doccomment">/// A parallel single-producer, multi-consumer signal.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SpmcSignalPl</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>(<span class="ident">SpmcSignalRuntimeRef</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> <span class="ident">Clone</span> <span class="kw">for</span> <span class="ident">SpmcSignalPl</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> {
@@ -406,6 +474,12 @@
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">runtime</span>();
         <span class="kw">let</span> <span class="ident">last_v</span> <span class="op">=</span> <span class="ident">r</span>.<span class="ident">runtime</span>.<span class="ident">last_value</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="ident">last_v</span>.<span class="ident">clone</span>()
+    }
+
+    <span class="doccomment">/// Emits a value to the signal only if the signal is not yet emitted.</span>
+    <span class="doccomment">/// Returns a bool to indicate if the emission suceeds or not.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_emit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">emitted</span>: <span class="ident">V</span>) <span class="op">-&gt;</span> <span class="ident">TryEmitValue</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">V</span><span class="op">&gt;</span> {
+        <span class="ident">TryEmitValue</span> { <span class="ident">signal</span>: <span class="self">self</span>.<span class="ident">clone</span>(), <span class="ident">emitted</span> }
     }
 }
 </pre>
